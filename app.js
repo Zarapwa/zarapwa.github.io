@@ -1,403 +1,424 @@
-// ===== ExchangeMiniApp — GOLD Version =====
+// ExchangeMiniApp — GOLD+ Version
 
 const LOCAL_KEY = "exchangeMiniApp_localRows_v1";
 
 const state = {
   remoteRows: [],
   localRows: [],
-  rows: [],
+  rows: []
 };
 
 // ---------- Helpers ----------
 
-function sumAmount(rows, type) {
-  return rows
-    .filter((r) => (r.tx_type || "").toLowerCase() === type.toLowerCase())
-    .reduce((s, r) => s + (Number(r.amount) || 0), 0);
+function toNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(String(value).replace(/,/g, ""));
+  return Number.isFinite(n) ? n : null;
 }
 
-function todayIso() {
+function todayISO() {
   const d = new Date();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-function formatNumber(x) {
-  const n = Number(x) || 0;
-  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+function formatAmount(n) {
+  const num = Number(n || 0);
+  return num.toLocaleString("en-US");
 }
 
-// Deal ID generator: NAME + DATE + COUNTER
+function sumAmount(rows, type) {
+  return rows
+    .filter(r => (r.tx_type || "").toLowerCase() === type.toLowerCase())
+    .reduce((s, r) => s + (toNumber(r.amount) || 0), 0);
+}
+
+function countConversions(rows) {
+  return rows.filter(
+    r => (r.tx_type || "").toLowerCase() === "conversion"
+  ).length;
+}
+
+// Gold Deal ID generator: NAME + DATE + COUNTER
 function generateDealId(customer, txDate, allRows) {
-  const nameRaw = (customer || "DEAL").trim().toUpperCase();
-  const nameLetters = nameRaw.replace(/[^A-Z]/g, "") || "DEAL";
+  const rawName = (customer || "DEAL").toUpperCase();
+  // فقط حروف A-Z برای Prefix
+  const nameLetters = rawName.replace(/[^A-Z]/g, "") || "DEAL";
   const prefix =
-    nameLetters.length >= 4
-      ? nameLetters.slice(0, 4)
-      : nameLetters.padEnd(4, "X");
+    nameLetters.length >= 4 ? nameLetters.slice(0, 4) : nameLetters.padEnd(4, "X");
 
-  let dateObj;
-  if (txDate) {
-    dateObj = new Date(txDate);
-  } else {
-    dateObj = new Date();
-  }
-  const day = String(dateObj.getDate()).padStart(2, "0");
-  const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-  const mon = months[dateObj.getMonth()] || "XXX";
-  const year = dateObj.getFullYear();
-  const dateCode = `${day}${mon}${year}`;
+  let d = txDate;
+  if (!d) d = todayISO();
+  const [year, month, day] = d.split("-");
+  const dateCode =
+    day + month + year.slice(-2); // مثال: 2025-12-05 → 051225
 
-  const basePrefix = `${prefix}-${dateCode}`;
-  const existing = (allRows || []).filter(
-    (r) => typeof r.deal_id === "string" && r.deal_id.startsWith(basePrefix)
-  );
-  const counter = existing.length + 1;
-  const counterStr = String(counter).padStart(3, "0");
+  const sameDayRows = allRows.filter(r => r.tx_date === d);
+  const counter = String(sameDayRows.length + 1).padStart(3, "0");
 
-  return `${basePrefix}-${counterStr}`;
+  return `${prefix}-${dateCode}-${counter}`;
 }
 
-// Auto calculation for payable when conversion
-function autoCalcPayable(base, target, amount, rate) {
-  const a = Number(amount);
-  const r = Number(rate);
-  if (!a || !r || !base || !target) return null;
+// Payable auto-calc for conversions based on Trader Rate
+function autoCalcPayable(base, target, amount, traderRate) {
+  const a = toNumber(amount);
+  const r = toNumber(traderRate);
+  if (a == null || r == null) return null;
 
-  const key = `${base.toUpperCase()}>${target.toUpperCase()}`;
+  const pair = `${base}->${target}`;
 
-  switch (key) {
-    case "RMB>IRR":
+  switch (pair) {
+    case "RMB->IRR":
+    case "USD->IRR":
+    case "USD->AED":
       return a * r;
-    case "RMB>AED":
-    case "RMB>USD":
+
+    case "RMB->AED":
+    case "RMB->USD":
       return a / r;
-    case "USD>IRR":
-    case "USD>AED":
-      return a * r;
+
     default:
-      // default fallback
-      return a * r;
+      return null;
   }
 }
 
-// ---------- Data loading ----------
+function mergeRows() {
+  state.rows = [...state.remoteRows, ...state.localRows];
 
-async function loadRemoteData() {
-  try {
-    const res = await fetch("data.json?cache=" + Date.now());
-    const data = await res.json();
-    if (!Array.isArray(data)) {
-      console.error("data.json is not an array");
-      return [];
-    }
-    return data;
-  } catch (err) {
-    console.error("Error loading data.json", err);
-    return [];
-  }
-}
-
-function loadLocalData() {
-  try {
-    const raw = localStorage.getItem(LOCAL_KEY);
-    if (!raw) return [];
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch (err) {
-    console.error("Error loading local rows", err);
-    return [];
-  }
-}
-
-function saveLocalData() {
-  try {
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localRows));
-  } catch (err) {
-    console.error("Error saving local rows", err);
-  }
+  state.rows.sort((a, b) => {
+    const da = a.tx_date || "";
+    const db = b.tx_date || "";
+    if (da < db) return -1;
+    if (da > db) return 1;
+    // اگر تاریخ برابر بود، فقط برای پایداری ترتیب
+    return (a.deal_id || "").localeCompare(b.deal_id || "");
+  });
 }
 
 // ---------- Rendering ----------
 
-function renderAlerts(rows) {
+function renderAlerts() {
   const el = document.getElementById("alerts");
   if (!el) return;
 
-  const { errors, warnings } = calcAlerts(rows);
-
-  if (!errors.length && !warnings.length) {
-    el.innerHTML = `<div class="stat">
-      <span class="stat-label">Alerts</span>
-      <div class="stat-value" style="font-size:0.95rem;">Everything looks OK ✓</div>
-    </div>`;
-    return;
-  }
-
-  const errHtml = errors.length
-    ? `<div>❌ <strong>${errors.length}</strong> critical issue(s) in conversions.</div>`
-    : "";
-  const warnHtml = warnings.length
-    ? `<div>⚠️ <strong>${warnings.length}</strong> warning(s) (missing payable / trader rate).</div>`
-    : "";
-
-  el.innerHTML = `<div class="stat">
-    <span class="stat-label">Alerts</span>
-    <div style="margin-top:0.35rem;font-size:0.9rem;">
-      ${errHtml}${warnHtml}
-    </div>
-  </div>`;
-}
-
-function calcAlerts(rows) {
-  const errors = [];
-  const warnings = [];
-
-  rows.forEach((r, idx) => {
-    const type = (r.tx_type || "").toLowerCase();
-    const payable = Number(r.payable);
-    const traderRate = Number(r.trader_rate);
-    const hasPayable = !Number.isNaN(payable) && payable !== 0;
-    const hasRate = !Number.isNaN(traderRate) && traderRate !== 0;
-
-    if (type === "conversion") {
-      if (!hasPayable && !hasRate) {
-        errors.push(idx);
-      } else if (!hasPayable || !hasRate) {
-        warnings.push(idx);
-      }
-    }
-  });
-
-  return { errors, warnings };
-}
-
-function renderDashboard(rows) {
-  const el = document.getElementById("dashboard");
-  if (!el) return;
-
-  const today = todayIso();
-
-  const totalTx = rows.length;
-  const todayTx = rows.filter((r) => r.tx_date === today).length;
-  const totalInflow = sumAmount(rows, "inflow");
-  const totalOutflow = sumAmount(rows, "outflow");
-  const conversions = rows.filter(
-    (r) => (r.tx_type || "").toLowerCase() === "conversion"
-  ).length;
-
   el.innerHTML = `
-    <div class="stat">
-      <div class="stat-label">All Transactions</div>
-      <div class="stat-value">${formatNumber(totalTx)}</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Today (${today})</div>
-      <div class="stat-value">${formatNumber(todayTx)}</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Total Inflow (amount)</div>
-      <div class="stat-value">${formatNumber(totalInflow)}</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Total Outflow (amount)</div>
-      <div class="stat-value">${formatNumber(totalOutflow)}</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Conversions</div>
-      <div class="stat-value">${formatNumber(conversions)}</div>
+    <div class="alert alert-ok">
+      Everything looks OK ✓
     </div>
   `;
 }
 
-function renderDeals(rows) {
+function renderDashboard() {
+  const el = document.getElementById("dashboard");
+  if (!el) return;
+
+  const rows = state.rows;
+  const today = todayISO();
+
+  const totalTx = rows.length;
+  const todayTx = rows.filter(r => r.tx_date === today).length;
+  const totalIn = sumAmount(rows, "inflow");
+  const totalOut = sumAmount(rows, "outflow");
+  const convCount = countConversions(rows);
+
+  el.innerHTML = `
+    <div class="dashboard-grid">
+      <div class="dash-card">
+        <div class="dash-title">All Transactions</div>
+        <div class="dash-value">${formatAmount(totalTx)}</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">Today (${today})</div>
+        <div class="dash-value">${formatAmount(todayTx)}</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">Total Inflow (amount)</div>
+        <div class="dash-value">${formatAmount(totalIn)}</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">Total Outflow (amount)</div>
+        <div class="dash-value">${formatAmount(totalOut)}</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">Conversions</div>
+        <div class="dash-value">${formatAmount(convCount)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function buildDealRow(row) {
+  const tx = (row.tx_type || "").toLowerCase();
+  const baseCur = row.base_currency || "";
+  const targetCur = row.target_currency || "";
+  const dealId = row.deal_id || "";
+  const date = row.tx_date || "";
+  const customer = row.customer || "";
+  const amount = toNumber(row.amount);
+  const payable = toNumber(row.payable);
+
+  let sign = "";
+  let displayAmount = null;
+  let displayCurrency = "";
+
+  if (tx === "inflow") {
+    sign = "+";
+    displayAmount = amount;
+    displayCurrency = baseCur;
+  } else if (tx === "outflow") {
+    sign = "–";
+    displayAmount = amount;
+    displayCurrency = baseCur;
+  } else if (tx === "conversion") {
+    sign = "–";
+    // برای نمایش، ترجیحاً payable را نشان بده
+    displayAmount = payable != null ? payable : amount;
+    displayCurrency = payable != null ? targetCur : baseCur;
+  }
+
+  const amountText =
+    displayAmount != null ? `${sign}${formatAmount(displayAmount)} ${displayCurrency}` : "";
+
+  return `
+    <article class="deal-row">
+      <div class="deal-main">
+        <div class="deal-id">${dealId}</div>
+        <div class="deal-meta">
+          ${date} • ${tx} • ${customer}
+        </div>
+      </div>
+      <div class="deal-amount">${amountText}</div>
+    </article>
+  `;
+}
+
+function renderDeals() {
   const el = document.getElementById("deals");
   if (!el) return;
 
-  const latest = [...rows]
-    .sort((a, b) => (a.tx_date || "").localeCompare(b.tx_date || ""))
-    .reverse()
-    .slice(0, 30);
+  if (!state.rows.length) {
+    el.innerHTML = `
+      <h2>Deals</h2>
+      <p class="empty">No deals yet.</p>
+    `;
+    return;
+  }
 
-  const itemsHtml = latest
-    .map((r) => {
-      const type = (r.tx_type || "").toLowerCase();
-      let sign = "";
-      if (type === "inflow") sign = "+";
-      else if (type === "outflow" || type === "conversion") sign = "−";
-
-      const baseCur = r.base_currency || "";
-      const amount = r.amount ? `${sign}${formatNumber(r.amount)} ${baseCur}` : "";
-
-      const id = r.deal_id || "(no ID)";
-      const date = r.tx_date || "";
-      const customer = r.customer || "";
-      const localBadge = r.__local ? " • (local)" : "";
-
-      return `
-        <div class="deal-item">
-          <div class="deal-main">
-            <div class="deal-id">${id}${localBadge}</div>
-            <div class="deal-amount">${amount}</div>
-          </div>
-          <div class="deal-meta">
-            ${date} • ${type || " ? "} • ${customer}
-          </div>
-        </div>
-      `;
-    })
+  const rowsHtml = state.rows
+    .slice()
+    .reverse() // آخرین تراکنش‌ها بالا
+    .map(buildDealRow)
     .join("");
 
   el.innerHTML = `
     <h2>Deals</h2>
-    ${itemsHtml || '<div class="deal-meta">No deals yet.</div>'}
+    <div class="deal-list">
+      ${rowsHtml}
+    </div>
   `;
 }
 
-function renderAll() {
-  renderAlerts(state.rows);
-  renderDashboard(state.rows);
-  renderDeals(state.rows);
+// ---------- Local Storage ----------
+
+function loadLocalRows() {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data)) return [];
+    return data;
+  } catch (e) {
+    console.error("Error loading local rows", e);
+    return [];
+  }
 }
 
-// ---------- New Deal Form Logic ----------
+function saveLocalRows() {
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localRows));
+  } catch (e) {
+    console.error("Error saving local rows", e);
+  }
+}
 
-function openNewDealForm() {
+// ---------- Remote Data ----------
+
+async function loadRemoteRows() {
+  try {
+    const res = await fetch("data.json?cache=" + Date.now());
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    // اطمینان از اینکه NaN وارد نمی‌شود
+    return data.map(r => ({
+      ...r,
+      amount: toNumber(r.amount),
+      payable: toNumber(r.payable),
+      trader_rate: toNumber(r.trader_rate),
+      exchanger_rate: toNumber(r.exchanger_rate)
+    }));
+  } catch (e) {
+    console.error("Error loading data.json", e);
+    return [];
+  }
+}
+
+// ---------- New Deal Form ----------
+
+function showNewDealForm() {
   const card = document.getElementById("new-deal-card");
   if (!card) return;
   card.classList.remove("hidden");
 
-  // default date today
-  const dateInput = document.getElementById("tx_date");
-  if (dateInput && !dateInput.value) {
-    dateInput.value = todayIso();
-  }
+  // پیش‌فرض‌ها
+  const today = todayISO();
+  document.getElementById("tx_date").value = today;
+  document.getElementById("tx_type").value = "";
+  document.getElementById("base_currency").value = "";
+  document.getElementById("target_currency").value = "";
+  document.getElementById("amount").value = "";
+  document.getElementById("payable").value = "";
+  document.getElementById("trader_rate").value = "";
+  document.getElementById("exchanger_rate").value = "";
+  document.getElementById("notes").value = "";
 
-  // pre-fill Deal ID (draft)
-  const idInput = document.getElementById("deal_id");
-  const customer = document.getElementById("customer")?.value || "";
-  const draftId = generateDealId(customer, dateInput.value, state.rows);
-  if (idInput && !idInput.value) {
-    idInput.value = draftId;
-  }
+  // Deal ID پیشنهادی
+  const customer = document.getElementById("customer").value;
+  const suggested = generateDealId(customer, today, state.rows);
+  document.getElementById("deal_id").value = suggested;
+
+  // اسکرول تا فرم
+  card.scrollIntoView({ behavior: "smooth" });
 }
 
-function cancelNewDealForm() {
+function hideNewDealForm() {
   const card = document.getElementById("new-deal-card");
-  if (card) card.classList.add("hidden");
-  const form = document.getElementById("newDealForm");
-  if (form) form.reset();
-  const idInput = document.getElementById("deal_id");
-  if (idInput) idInput.value = "";
+  if (!card) return;
+  card.classList.add("hidden");
 }
 
-function handleNewDealSubmit(mode) {
-  const form = document.getElementById("newDealForm");
-  if (!form) return;
+function handleNewDealSubmit(evt) {
+  evt.preventDefault();
 
-  const tx_date = document.getElementById("tx_date").value || todayIso();
-  const customer = document.getElementById("customer").value || "";
-  const exchanger = document.getElementById("exchanger").value || "";
-  const account_id = document.getElementById("account_id").value || "";
-  const tx_type = document.getElementById("tx_type").value || "";
-  const base_currency = document.getElementById("base_currency").value || "";
-  const amount = Number(document.getElementById("amount").value || 0);
-  const target_currency =
-    document.getElementById("target_currency").value || "";
-  let payable = document.getElementById("payable").value;
-  let trader_rate = document.getElementById("trader_rate").value;
-  let exchanger_rate = document.getElementById("exchanger_rate").value;
-  const notes = document.getElementById("notes").value || "";
-  let deal_id = document.getElementById("deal_id").value.trim();
+  const deal_id = document.getElementById("deal_id").value.trim();
+  const tx_date = document.getElementById("tx_date").value;
+  const customer = document.getElementById("customer").value.trim();
+  const exchanger = document.getElementById("exchanger").value.trim();
+  const account_id = document.getElementById("account_id").value.trim();
+  const tx_type = document.getElementById("tx_type").value;
+  const base_currency = document.getElementById("base_currency").value;
+  const target_currency = document.getElementById("target_currency").value;
+  const amount = toNumber(document.getElementById("amount").value);
+  let payable = toNumber(document.getElementById("payable").value);
+  let trader_rate = toNumber(document.getElementById("trader_rate").value);
+  const exchanger_rate = toNumber(
+    document.getElementById("exchanger_rate").value
+  );
+  const notes = document.getElementById("notes").value.trim();
 
-  if (!tx_type || !base_currency || !amount || !customer) {
-    alert("Please fill at least: Date, Customer, Tx Type, Base Currency, Amount.");
+  if (!tx_date || !customer || !tx_type || !base_currency || amount == null) {
+    alert("Please fill required fields.");
     return;
   }
 
-  if (!deal_id) {
-    deal_id = generateDealId(customer, tx_date, state.rows);
-  }
-
-  // auto calc payable for conversion if possible
-  if (tx_type.toLowerCase() === "conversion") {
-    if (!payable) {
-      const auto = autoCalcPayable(
+  // اگر conversion و payable خالی بود → Auto calc
+  if (tx_type === "conversion".toLowerCase() || tx_type === "conversion") {
+    if (payable == null && trader_rate != null) {
+      payable = autoCalcPayable(
         base_currency,
         target_currency,
         amount,
         trader_rate
       );
-      if (auto != null) {
-        payable = auto;
-        const payInput = document.getElementById("payable");
-        if (payInput) payInput.value = String(auto);
-      }
     }
   }
 
-  const row = {
-    deal_id,
+  // اطمینان از اینکه NaN ذخیره نشود
+  if (!Number.isFinite(payable)) payable = null;
+  if (!Number.isFinite(trader_rate)) trader_rate = null;
+
+  // اگر Deal ID خالی بود، بساز
+  const finalDealId =
+    deal_id || generateDealId(customer, tx_date, state.rows);
+
+  const newRow = {
+    deal_id: finalDealId,
     tx_date,
     tx_type,
     customer,
     exchanger,
     account_id,
     base_currency,
-    amount,
     target_currency,
-    payable: payable === "" ? null : Number(payable),
-    trader_rate: trader_rate === "" ? null : Number(trader_rate),
-    exchanger_rate: exchanger_rate === "" ? null : Number(exchanger_rate),
-    notes,
-    __local: true,
+    amount,
+    payable,
+    trader_rate,
+    exchanger_rate,
+    trader: "",
+    notes
   };
 
-  state.localRows.push(row);
-  saveLocalData();
+  state.localRows.push(newRow);
+  saveLocalRows();
+  mergeRows();
+  renderDashboard();
+  renderDeals();
+  renderAlerts();
 
-  state.rows = [...state.remoteRows, ...state.localRows];
-  renderAll();
-
-  if (mode === "saveNew") {
-    // reset for next deal, but نگه‌داشتن تاریخ و مشتری خوب است؟
-    const keepDate = tx_date;
-    form.reset();
-    document.getElementById("tx_date").value = keepDate;
-    document.getElementById("customer").value = customer;
-
-    const newDraftId = generateDealId(customer, keepDate, state.rows);
-    document.getElementById("deal_id").value = newDraftId;
-  } else {
-    cancelNewDealForm();
-  }
+  hideNewDealForm();
+  alert("New deal saved (local only).");
 }
 
-// ---------- Refresh button ----------
+// ---------- Refresh / Init ----------
 
-function refreshApp() {
-  // فقط از سرور دوباره می‌خوانیم؛ localRows سرجای خودش می‌ماند
-  init(true);
+async function refreshApp() {
+  const [remote, local] = await Promise.all([
+    loadRemoteRows(),
+    Promise.resolve(loadLocalRows())
+  ]);
+
+  state.remoteRows = remote;
+  state.localRows = local;
+  mergeRows();
+  renderDashboard();
+  renderDeals();
+  renderAlerts();
 }
 
-// ---------- Init ----------
+function initEventHandlers() {
+  const btnNewDeal = document.getElementById("btn-new-deal");
+  const btnRefresh = document.getElementById("btn-refresh");
+  const btnCancelNew = document.getElementById("btn-cancel-new-deal");
+  const form = document.getElementById("newDealForm");
 
-async function init(forceRemote) {
-  if (!state.remoteRows.length || forceRemote) {
-    state.remoteRows = await loadRemoteData();
+  if (btnNewDeal) {
+    btnNewDeal.addEventListener("click", showNewDealForm);
   }
-  state.localRows = loadLocalData();
-  state.rows = [...state.remoteRows, ...state.localRows];
-  renderAll();
+  if (btnRefresh) {
+    btnRefresh.addEventListener("click", refreshApp);
+  }
+  if (btnCancelNew) {
+    btnCancelNew.addEventListener("click", hideNewDealForm);
+  }
+  if (form) {
+    form.addEventListener("submit", handleNewDealSubmit);
+  }
+
+  // برای سازگاری با نسخه‌های قبلی که onclick داشتند
+  window.openNewDealForm = showNewDealForm;
+  window.refreshApp = refreshApp;
+}
+
+function registerServiceWorker() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("service-worker.js")
+      .catch(err => console.error("SW registration failed", err));
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  init(false);
+  initEventHandlers();
+  refreshApp();
+  registerServiceWorker();
 });
-
-// make handlers global for inline HTML
-window.openNewDealForm = openNewDealForm;
-window.cancelNewDealForm = cancelNewDealForm;
-window.handleNewDealSubmit = handleNewDealSubmit;
-window.refreshApp = refreshApp;
