@@ -1,5 +1,5 @@
-const CACHE_NAME = "exchange-mini-v1";
-const FILES = [
+const CACHE_NAME = "exchange-mini-cache-v1";
+const ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
@@ -10,22 +10,26 @@ const FILES = [
   "/icons/icon-512.png"
 ];
 
-// Install
+// Install SW
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(FILES))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS);
+    })
   );
   self.skipWaiting();
 });
 
-// Activate
+// Activate SW
 self.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      )
-    )
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      );
+    })
   );
   self.clients.claim();
 });
@@ -33,12 +37,13 @@ self.addEventListener("activate", (e) => {
 // Fetch
 self.addEventListener("fetch", (e) => {
   e.respondWith(
-    fetch(e.request)
-      .then((res) => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
-        return res;
-      })
-      .catch(() => caches.match(e.request))
+    caches.match(e.request).then((cached) => {
+      return (
+        cached ||
+        fetch(e.request).catch(() =>
+          new Response("Offline Mode Active", { status: 200 })
+        )
+      );
+    })
   );
 });
