@@ -1,4 +1,4 @@
-const CACHE_NAME = "exchange-v99";
+const CACHE_NAME = "exchange-v103";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -22,3 +22,4 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
