@@ -1,167 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ExchangeMiniApp</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exchange MiniApp V99</title>
 
-  <link rel="stylesheet" href="styles.css" />
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json" />
 
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#000000" />
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css" />
 
-  <!-- iOS Support -->
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <!-- iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <link rel="apple-touch-icon" href="icons/icon-512-maskable.png" />
 </head>
 
 <body>
-  <header class="topbar">
-    <div class="logo">ExchangeMiniApp</div>
-    <div class="topbar-actions">
-      <button id="btn-new-deal" class="btn btn-secondary">+ New Deal</button>
-      <button id="btn-refresh" class="btn btn-primary">Refresh</button>
-    </div>
-  </header>
+    <header>
+        <h1>Exchange MiniApp</h1>
+        <button id="reloadBtn">⟳</button>
+    </header>
 
-  <!-- Alerts -->
-  <section id="alerts" class="card"></section>
+    <main>
 
-  <!-- Dashboard -->
-  <section id="dashboard" class="dashboard card"></section>
+        <!-- Dashboard Cards -->
+        <section class="card-row">
+            <div class="card small" id="todayDeals">Today Deals</div>
+            <div class="card small" id="warningPayable">Payable Alerts</div>
+            <div class="card small" id="balanceCard">Balance</div>
+        </section>
 
-  <!-- New Deal Form -->
-  <section id="new-deal-card" class="card new-deal hidden">
-    <h2>New Deal</h2>
+        <!-- Transactions -->
+        <section class="card" id="transactionsCard">
+            <h2>All Deals</h2>
+            <div id="dealList"></div>
+        </section>
 
-    <form id="newDealForm">
-      <div class="form-grid">
+        <!-- New Deal Button -->
+        <button id="openNewDeal" class="floating-btn">＋ New Deal</button>
 
-        <!-- 1. Deal ID (editable) -->
-        <div class="form-group full">
-          <label for="deal_id">Deal ID</label>
-          <input id="deal_id" name="deal_id" type="text"
-                 placeholder="Auto: GHOR-05DEC2025-001" />
-          <p class="hint">
-            به‌صورت خودکار ساخته می‌شود، ولی می‌توانی ویرایشش کنی.
-          </p>
-        </div>
+        <!-- New Deal Form -->
+        <section id="newDealCard" class="card new-deal hidden">
+            <h2>New Deal</h2>
 
-        <!-- 2. tx_date -->
-        <div class="form-group">
-          <label for="tx_date">Date</label>
-          <input id="tx_date" name="tx_date" type="date" required />
-        </div>
+            <form id="newDealForm" onsubmit="return false;">
+                <div class="form-grid">
 
-        <!-- 3. customer -->
-        <div class="form-group">
-          <label for="customer">Customer</label>
-          <input id="customer" name="customer" type="text"
-                 placeholder="Qorbanzadeh" required />
-        </div>
+                    <label>Deal ID</label>
+                    <input type="text" id="deal_id" />
 
-        <!-- 4. exchanger -->
-        <div class="form-group">
-          <label for="exchanger">Exchanger</label>
-          <input id="exchanger" name="exchanger" type="text"
-                 placeholder="EXB" />
-        </div>
+                    <label>Date</label>
+                    <input type="date" id="tx_date" />
 
-        <!-- 5. account_id -->
-        <div class="form-group">
-          <label for="account_id">Account ID / Wallet</label>
-          <input id="account_id" name="account_id" type="text"
-                 placeholder="Wallet / Bank / CashBox" />
-        </div>
+                    <label>Customer</label>
+                    <input type="text" id="customer" />
 
-        <!-- 6. tx_type -->
-        <div class="form-group">
-          <label for="tx_type">Transaction Type</label>
-          <select id="tx_type" name="tx_type" required>
-            <option value="">Select...</option>
-            <option value="inflow">Inflow</option>
-            <option value="outflow">Outflow</option>
-            <option value="conversion">Conversion</option>
-          </select>
-        </div>
+                    <label>Exchanger</label>
+                    <input type="text" id="exchanger" />
 
-        <!-- 7. base_currency -->
-        <div class="form-group">
-          <label for="base_currency">Base Currency</label>
-          <select id="base_currency" name="base_currency" required>
-            <option value="">Select...</option>
-            <option value="RMB">RMB</option>
-            <option value="USD">USD</option>
-            <option value="IRR">IRR</option>
-            <option value="AED">AED</option>
-          </select>
-        </div>
+                    <label>Account ID</label>
+                    <input type="text" id="account_id" />
 
-        <!-- 8. target_currency -->
-        <div class="form-group">
-          <label for="target_currency">Target Currency</label>
-          <select id="target_currency" name="target_currency">
-            <option value="">Select...</option>
-            <option value="RMB">RMB</option>
-            <option value="USD">USD</option>
-            <option value="IRR">IRR</option>
-            <option value="AED">AED</option>
-          </select>
-        </div>
+                    <label>Tx Type</label>
+                    <select id="tx_type">
+                        <option value="inflow">Inflow</option>
+                        <option value="outflow">Outflow</option>
+                        <option value="conversion">Conversion</option>
+                    </select>
 
-        <!-- 9. amount -->
-        <div class="form-group">
-          <label for="amount">Amount (base)</label>
-          <input id="amount" name="amount" type="number" step="0.0001"
-                 inputmode="decimal" required />
-        </div>
+                    <label>Base Currency</label>
+                    <select id="base_currency">
+                        <option>RMB</option>
+                        <option>USD</option>
+                        <option>IRR</option>
+                        <option>AED</option>
+                    </select>
 
-        <!-- 10. payable -->
-        <div class="form-group">
-          <label for="payable">Payable (target)</label>
-          <input id="payable" name="payable" type="number" step="0.0001"
-                 inputmode="decimal" />
-          <p class="hint">
-            اگر Conversion باشد و اینجا خالی بگذاری، بر اساس Trader Rate
-            محاسبه می‌شود.
-          </p>
-        </div>
+                    <label>Amount</label>
+                    <input type="number" id="amount" />
 
-        <!-- 11. trader_rate -->
-        <div class="form-group">
-          <label for="trader_rate">Trader Rate</label>
-          <input id="trader_rate" name="trader_rate" type="number"
-                 step="0.0001" inputmode="decimal" />
-        </div>
+                    <label>Target Currency</label>
+                    <select id="target_currency">
+                        <option>RMB</option>
+                        <option>USD</option>
+                        <option>IRR</option>
+                        <option>AED</option>
+                    </select>
 
-        <!-- 12. exchanger_rate -->
-        <div class="form-group">
-          <label for="exchanger_rate">Exchanger Rate</label>
-          <input id="exchanger_rate" name="exchanger_rate" type="number"
-                 step="0.0001" inputmode="decimal" />
-        </div>
+                    <label>Payable</label>
+                    <input type="number" id="payable" />
 
-        <!-- 13. notes -->
-        <div class="form-group full">
-          <label for="notes">Notes</label>
-          <textarea id="notes" name="notes" rows="2"
-                    placeholder="توضیحات اضافی (اختیاری)"></textarea>
-        </div>
-      </div>
+                    <label>Trader Rate</label>
+                    <input type="number" id="trader_rate" />
 
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Save Deal</button>
-        <button type="button" id="btn-cancel-new-deal"
-                class="btn btn-secondary">Cancel</button>
-      </div>
-    </form>
-  </section>
+                    <label>Exchanger Rate</label>
+                    <input type="number" id="exchanger_rate" />
 
-  <!-- Deals List -->
-  <section id="deals" class="card deals-list"></section>
+                    <label>Notes</label>
+                    <input type="text" id="notes" />
+                </div>
 
-  <script src="app.js"></script>
+                <button id="saveDeal" class="btn-save">Save Deal</button>
+                <button id="cancelNewDeal" class="btn-cancel">Cancel</button>
+
+            </form>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
 </body>
 </html>
