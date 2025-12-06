@@ -1,251 +1,62 @@
-/* ExchangeMiniApp — GOLD THEME */
-
-/* ---------- Base ---------- */
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
 body {
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  background: #06060a; /* deep dark */
-  color: #eaeaea;
+    margin: 0;
+    background: #111;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* ---------- Top Bar ---------- */
-
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.9rem 1.2rem;
-  background: #050516;
-  border-bottom: 1px solid #22233a;
-  position: sticky;
-  top: 0;
-  z-index: 50;
+header {
+    background: #000;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
-
-.logo {
-  font-weight: 600;
-  font-size: 1rem;
-  letter-spacing: 0.04em;
-}
-
-.topbar-actions {
-  display: flex;
-  gap: 0.6rem;
-}
-
-/* ---------- Buttons ---------- */
-
-.btn {
-  border: 0;
-  border-radius: 999px;
-  padding: 0.35rem 1.1rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-  font-weight: 500;
-  background: #222;
-  color: #eee;
-}
-
-.btn-primary {
-  background: linear-gradient(120deg, #3b86ff, #7a5cff);
-}
-
-.btn-secondary {
-  background: #191a24;
-}
-
-.btn:hover {
-  filter: brightness(1.05);
-}
-
-/* ---------- Cards / Layout ---------- */
 
 .card {
-  margin: 0.8rem 0.9rem;
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
-  background: #0d0d18;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.6);
+    background: #1a1a1a;
+    padding: 15px;
+    margin: 12px;
+    border-radius: 12px;
 }
 
-.hidden {
-  display: none;
+.card-row {
+    display: flex;
+    gap: 10px;
+    margin: 10px;
 }
 
-/* ---------- Alerts ---------- */
-
-.alert {
-  padding: 0.55rem 0.8rem;
-  border-radius: 10px;
-  font-size: 0.88rem;
+.card.small {
+    flex: 1;
+    background: #222;
+    padding: 20px;
+    text-align: center;
 }
 
-.alert-ok {
-  background: linear-gradient(120deg, #0f6b3a, #1aa757);
-  color: #f5fff7;
+.floating-btn {
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    padding: 16px 22px;
+    border-radius: 50px;
+    background: #ffcc00;
+    color: #000;
+    border: none;
+    font-size: 20px;
 }
 
-/* ---------- Dashboard ---------- */
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.7rem;
-}
-
-.dash-card {
-  padding: 0.7rem 0.8rem;
-  border-radius: 12px;
-  background: #11111f;
-  border: 1px solid #23243a;
-}
-
-.dash-title {
-  font-size: 0.78rem;
-  opacity: 0.7;
-  margin-bottom: 0.4rem;
-}
-
-.dash-value {
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-/* ---------- New Deal Form ---------- */
-
-.new-deal h2,
-.deals-list h2,
-#deals h2 {
-  margin-top: 0;
-  margin-bottom: 0.7rem;
-  font-size: 1.05rem;
+.new-deal.hidden {
+    display: none;
 }
 
 .form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.7rem 0.9rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.form-group.full {
-  grid-column: 1 / -1;
-}
-
-label {
-  font-size: 0.78rem;
-  opacity: 0.85;
-}
-
-input,
-select,
-textarea {
-  border-radius: 10px;
-  border: 1px solid #33354a;
-  background: #050513;
-  padding: 0.45rem 0.55rem;
-  color: #f0f0ff;
-  font-size: 0.85rem;
-}
-
-input::placeholder,
-textarea::placeholder {
-  opacity: 0.55;
-}
-
-textarea {
-  resize: vertical;
-}
-
-.hint {
-  margin: 0;
-  font-size: 0.72rem;
-  opacity: 0.6;
-}
-
-.form-actions {
-  margin-top: 0.9rem;
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-/* ---------- Deals List ---------- */
-
-.deal-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.deal-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 0.4rem;
-  border-radius: 10px;
-  background: #070716;
-  border: 1px solid #1b1c32;
-}
-
-.deal-main {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  max-width: 70%;
-}
-
-.deal-id {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.deal-meta {
-  font-size: 0.75rem;
-  opacity: 0.7;
-}
-
-.deal-amount {
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.empty {
-  font-size: 0.82rem;
-  opacity: 0.7;
-}
-
-/* ---------- Responsive ---------- */
-
-@media (min-width: 900px) {
-  body {
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  .topbar {
-    border-radius: 0 0 18px 18px;
-    margin: 0.4rem 0.4rem 0;
-  }
-
-  .card {
-    margin-left: 0.4rem;
-    margin-right: 0.4rem;
-  }
+input, select {
+    padding: 8px;
+    border-radius: 8px;
+    border: none;
 }
