@@ -1,114 +1,290 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Exchange MiniApp V99</title>
+  <meta charset="UTF-8" />
+  <title>ExchangeMini — Full Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Manifest -->
-    <link rel="manifest" href="manifest.json" />
+  <!-- PWA / iOS -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="Exchange" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
 
-    <!-- Styles -->
-    <link rel="stylesheet" href="styles.css" />
-
-    <!-- iOS Support -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-    <link rel="apple-touch-icon" href="icons/icon-512-maskable.png" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
-    <header>
-        <h1>Exchange MiniApp</h1>
-        <button id="reloadBtn">⟳</button>
+  <div class="app-shell">
+    <!-- Sidebar / Topbar -->
+    <header class="app-header">
+      <div class="app-brand">
+        <span class="brand-icon">⤳</span>
+        <span class="brand-title">ExchangeMini</span>
+        <span class="brand-sub">Deal & Cash Flow Console</span>
+      </div>
+      <nav class="app-nav">
+        <button class="nav-btn active" data-view="dashboard-view">Dashboard</button>
+        <button class="nav-btn" data-view="deals-view">Deals</button>
+        <button class="nav-btn" data-view="transactions-view">Transactions</button>
+        <button class="nav-btn" data-view="reports-view">Reports</button>
+        <button class="nav-btn" data-view="newdeal-view">New Deal</button>
+      </nav>
     </header>
 
-    <main>
+    <main class="app-main">
+      <!-- DASHBOARD -->
+      <section id="dashboard-view" class="view active">
+        <div class="cards-row">
+          <article class="card">
+            <h2>Total Deals</h2>
+            <p class="card-main" id="card-total-deals">—</p>
+            <p class="card-sub">Unique Deal IDs</p>
+          </article>
 
-        <!-- Dashboard Cards -->
-        <section class="card-row">
-            <div class="card small" id="todayDeals">Today Deals</div>
-            <div class="card small" id="warningPayable">Payable Alerts</div>
-            <div class="card small" id="balanceCard">Balance</div>
-        </section>
+          <article class="card">
+            <h2>Today’s Deals</h2>
+            <p class="card-main" id="card-today-deals">—</p>
+            <p class="card-sub" id="card-today-date">—</p>
+          </article>
 
-        <!-- Transactions -->
-        <section class="card" id="transactionsCard">
-            <h2>All Deals</h2>
-            <div id="dealList"></div>
-        </section>
+          <article class="card">
+            <h2>Transactions</h2>
+            <p class="card-main" id="card-total-tx">—</p>
+            <p class="card-sub">
+              <span id="card-tx-inflow">0 In</span> •
+              <span id="card-tx-conversion">0 Conv</span> •
+              <span id="card-tx-outflow">0 Out</span>
+            </p>
+          </article>
+        </div>
 
-        <!-- New Deal Button -->
-        <button id="openNewDeal" class="floating-btn">＋ New Deal</button>
+        <div class="cards-row">
+          <article class="card wide">
+            <header class="card-header-row">
+              <h2>Summary by Base Currency</h2>
+              <div class="badge-pill" id="card-last-updated">Last updated: —</div>
+            </header>
+            <div class="table-wrapper compact">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Base Currency</th>
+                    <th>#Tx</th>
+                    <th>Total Amount</th>
+                  </tr>
+                </thead>
+                <tbody id="tbl-dashboard-base-summary">
+                  <tr><td colspan="3">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
 
-        <!-- New Deal Form -->
-        <section id="newDealCard" class="card new-deal hidden">
-            <h2>New Deal</h2>
+      <!-- DEALS VIEW -->
+      <section id="deals-view" class="view">
+        <header class="view-header">
+          <div>
+            <h1>Deals Overview</h1>
+            <p>One row per Deal ID — with quick stats.</p>
+          </div>
+          <div class="view-actions">
+            <label class="inline-label">
+              Filter by Customer:
+              <input type="text" id="deals-filter-customer" placeholder="Type name…" />
+            </label>
+          </div>
+        </header>
 
-            <form id="newDealForm" onsubmit="return false;">
-                <div class="form-grid">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Deal ID</th>
+                <th>Customer</th>
+                <th>#Tx</th>
+                <th>First Date</th>
+                <th>Last Date</th>
+                <th>Base Ccy</th>
+                <th>Total Amount</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-deals">
+              <tr><td colspan="7">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-                    <label>Deal ID</label>
-                    <input type="text" id="deal_id" />
+      <!-- TRANSACTIONS VIEW -->
+      <section id="transactions-view" class="view">
+        <header class="view-header">
+          <div>
+            <h1>Transactions</h1>
+            <p>Full transaction table (master list).</p>
+          </div>
+          <div class="view-actions">
+            <label class="inline-label">
+              Search:
+              <input type="text" id="tx-filter" placeholder="Deal, customer, exchanger…" />
+            </label>
+          </div>
+        </header>
 
-                    <label>Date</label>
-                    <input type="date" id="tx_date" />
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Deal ID</th>
+                <th>Customer</th>
+                <th>Exchanger</th>
+                <th>Type</th>
+                <th>Base</th>
+                <th>Amount</th>
+                <th>Target</th>
+                <th>Payable</th>
+                <th>Trader</th>
+                <th>Exchanger Rate</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-transactions">
+              <tr><td colspan="12">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-                    <label>Customer</label>
-                    <input type="text" id="customer" />
+      <!-- REPORTS VIEW -->
+      <section id="reports-view" class="view">
+        <header class="view-header">
+          <div>
+            <h1>Deal WhatsApp Report</h1>
+            <p>Select a Deal and get ready-to-send text.</p>
+          </div>
+          <div class="view-actions">
+            <label class="inline-label">
+              Deal:
+              <select id="report-deal-select"></select>
+            </label>
+          </div>
+        </header>
 
-                    <label>Exchanger</label>
-                    <input type="text" id="exchanger" />
+        <div class="report-box">
+          <textarea id="report-output" readonly></textarea>
+          <button id="btn-copy-report" type="button">Copy to Clipboard</button>
+          <div id="report-status" class="report-status"></div>
+        </div>
+      </section>
 
-                    <label>Account ID</label>
-                    <input type="text" id="account_id" />
+      <!-- NEW DEAL VIEW -->
+      <section id="newdeal-view" class="view">
+        <header class="view-header">
+          <div>
+            <h1>New Deal / Transaction</h1>
+            <p>Add or edit a single transaction line.</p>
+          </div>
+          <div class="view-actions">
+            <div class="badge-pill" id="form-mode-badge">Mode: New</div>
+          </div>
+        </header>
 
-                    <label>Tx Type</label>
-                    <select id="tx_type">
-                        <option value="inflow">Inflow</option>
-                        <option value="outflow">Outflow</option>
-                        <option value="conversion">Conversion</option>
-                    </select>
+        <form id="deal-form" class="deal-form">
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="deal-id">Deal ID</label>
+              <input id="deal-id" name="deal_id" type="text" placeholder="Auto or manual…" />
+              <button type="button" class="btn-small" id="btn-generate-dealid">Auto-ID</button>
+            </div>
 
-                    <label>Base Currency</label>
-                    <select id="base_currency">
-                        <option>RMB</option>
-                        <option>USD</option>
-                        <option>IRR</option>
-                        <option>AED</option>
-                    </select>
+            <div class="form-field">
+              <label for="tx-date">Date</label>
+              <input id="tx-date" name="tx_date" type="date" />
+            </div>
 
-                    <label>Amount</label>
-                    <input type="number" id="amount" />
+            <div class="form-field">
+              <label for="customer">Customer</label>
+              <input id="customer" name="customer" type="text" />
+            </div>
 
-                    <label>Target Currency</label>
-                    <select id="target_currency">
-                        <option>RMB</option>
-                        <option>USD</option>
-                        <option>IRR</option>
-                        <option>AED</option>
-                    </select>
+            <div class="form-field">
+              <label for="exchanger">Exchanger</label>
+              <input id="exchanger" name="exchanger" type="text" />
+            </div>
 
-                    <label>Payable</label>
-                    <input type="number" id="payable" />
+            <div class="form-field">
+              <label for="account-id">Account ID</label>
+              <input id="account-id" name="account_id" type="text" />
+            </div>
 
-                    <label>Trader Rate</label>
-                    <input type="number" id="trader_rate" />
+            <div class="form-field">
+              <label for="tx-type">Tx Type</label>
+              <select id="tx-type" name="tx_type">
+                <option value="inflow">Inflow</option>
+                <option value="outflow">Outflow</option>
+                <option value="conversion">Conversion</option>
+              </select>
+            </div>
 
-                    <label>Exchanger Rate</label>
-                    <input type="number" id="exchanger_rate" />
+            <div class="form-field">
+              <label for="base-currency">Base Currency</label>
+              <select id="base-currency" name="base_currency">
+                <option value="RMB">RMB</option>
+                <option value="USD">USD</option>
+                <option value="IRR">IRR</option>
+                <option value="AED">AED</option>
+              </select>
+            </div>
 
-                    <label>Notes</label>
-                    <input type="text" id="notes" />
-                </div>
+            <div class="form-field">
+              <label for="amount">Amount</label>
+              <input id="amount" name="amount" type="number" step="0.01" />
+            </div>
 
-                <button id="saveDeal" class="btn-save">Save Deal</button>
-                <button id="cancelNewDeal" class="btn-cancel">Cancel</button>
+            <div class="form-field">
+              <label for="target-currency">Target Currency</label>
+              <select id="target-currency" name="target_currency">
+                <option value="">—</option>
+                <option value="RMB">RMB</option>
+                <option value="USD">USD</option>
+                <option value="IRR">IRR</option>
+                <option value="AED">AED</option>
+              </select>
+            </div>
 
-            </form>
-        </section>
+            <div class="form-field">
+              <label for="payable">Payable</label>
+              <input id="payable" name="payable" type="number" step="0.01" />
+            </div>
+
+            <div class="form-field">
+              <label for="trader-rate">Trader Rate</label>
+              <input id="trader-rate" name="trader_rate" type="number" step="0.0001" />
+            </div>
+
+            <div class="form-field">
+              <label for="exchanger-rate">Exchanger Rate</label>
+              <input id="exchanger-rate" name="exchanger_rate" type="number" step="0.0001" />
+            </div>
+
+            <div class="form-field form-field-full">
+              <label for="notes">Notes</label>
+              <textarea id="notes" name="notes" rows="2"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary" id="btn-save-deal">Save</button>
+            <button type="button" class="btn-neutral" id="btn-reset-form">Reset</button>
+          </div>
+        </form>
+      </section>
     </main>
+  </div>
 
-    <script src="app.js"></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
