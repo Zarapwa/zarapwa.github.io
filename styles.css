@@ -787,3 +787,9 @@ button {
 .tiny {
   font-size: 10px;
 }
+/* FIX: show nav correctly on mobile */
+.app-nav {
+    margin-top: 16px !important;
+    z-index: 999 !important;
+    position: relative !important;
+}
