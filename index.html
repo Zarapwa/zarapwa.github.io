@@ -1,290 +1,183 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ExchangeMini — Full Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- PWA / iOS -->
-  <link rel="manifest" href="manifest.json" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-  <meta name="apple-mobile-web-app-title" content="Exchange" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EXCHANGEMINI</title>
+  <link rel="stylesheet" href="styles.css?v=mini-1.0.3">
+  <script defer src="app.js?v=mini-1.0.3"></script>
 </head>
-<body>
-  <div class="app-shell">
-    <!-- Sidebar / Topbar -->
-    <header class="app-header">
-      <div class="app-brand">
-        <span class="brand-icon">⤳</span>
-        <span class="brand-title">ExchangeMini</span>
-        <span class="brand-sub">Deal & Cash Flow Console</span>
+<body class="app-shell">
+  <header class="app-header">
+    <div class="app-title-block">
+      <div class="app-title">EXCHANGEMINI</div>
+      <div class="app-subtitle">Deal & Cash Flow Console</div>
+    </div>
+
+    <div class="app-header-right">
+      <button id="debug-button" class="pill pill-outline">Debug</button>
+      <span class="version-pill">v<span id="app-version"></span></span>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <button class="pill pill-primary nav-link" data-view="dashboard">Dashboard</button>
+    <button class="pill nav-link" data-view="deals">Deals</button>
+    <button class="pill nav-link" data-view="transactions">Transactions</button>
+    <button class="pill nav-link" data-view="reports">Reports</button>
+    <button class="pill nav-link" data-view="new-deal">New Deal</button>
+  </nav>
+
+  <main class="app-main">
+    <!-- DASHBOARD -->
+    <section class="view" data-view="dashboard">
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-label">Total Deals</div>
+          <div class="card-value" id="total-deals">0</div>
+          <div class="card-caption">Unique Deal IDs</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Today's Deals</div>
+          <div class="card-value" id="todays-deals">0</div>
+          <div class="card-caption" id="today-label"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">Total Transactions</div>
+          <div class="card-value" id="total-transactions">0</div>
+          <div class="card-caption">All records from data.json</div>
+        </div>
       </div>
-      <nav class="app-nav">
-        <button class="nav-btn active" data-view="dashboard-view">Dashboard</button>
-        <button class="nav-btn" data-view="deals-view">Deals</button>
-        <button class="nav-btn" data-view="transactions-view">Transactions</button>
-        <button class="nav-btn" data-view="reports-view">Reports</button>
-        <button class="nav-btn" data-view="newdeal-view">New Deal</button>
-      </nav>
-    </header>
 
-    <main class="app-main">
-      <!-- DASHBOARD -->
-      <section id="dashboard-view" class="view active">
-        <div class="cards-row">
-          <article class="card">
-            <h2>Total Deals</h2>
-            <p class="card-main" id="card-total-deals">—</p>
-            <p class="card-sub">Unique Deal IDs</p>
-          </article>
+      <div class="card">
+        <div class="card-label">Deals by Currency</div>
+        <div id="currency-summary" class="mini-table"></div>
+      </div>
+    </section>
 
-          <article class="card">
-            <h2>Today’s Deals</h2>
-            <p class="card-main" id="card-today-deals">—</p>
-            <p class="card-sub" id="card-today-date">—</p>
-          </article>
-
-          <article class="card">
-            <h2>Transactions</h2>
-            <p class="card-main" id="card-total-tx">—</p>
-            <p class="card-sub">
-              <span id="card-tx-inflow">0 In</span> •
-              <span id="card-tx-conversion">0 Conv</span> •
-              <span id="card-tx-outflow">0 Out</span>
-            </p>
-          </article>
+    <!-- DEALS -->
+    <section class="view view-hidden" data-view="deals">
+      <div class="card">
+        <div class="card-header-row">
+          <div class="card-label">Deals</div>
+          <small id="deals-count-label" class="muted"></small>
         </div>
-
-        <div class="cards-row">
-          <article class="card wide">
-            <header class="card-header-row">
-              <h2>Summary by Base Currency</h2>
-              <div class="badge-pill" id="card-last-updated">Last updated: —</div>
-            </header>
-            <div class="table-wrapper compact">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Base Currency</th>
-                    <th>#Tx</th>
-                    <th>Total Amount</th>
-                  </tr>
-                </thead>
-                <tbody id="tbl-dashboard-base-summary">
-                  <tr><td colspan="3">Loading…</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <!-- DEALS VIEW -->
-      <section id="deals-view" class="view">
-        <header class="view-header">
-          <div>
-            <h1>Deals Overview</h1>
-            <p>One row per Deal ID — with quick stats.</p>
-          </div>
-          <div class="view-actions">
-            <label class="inline-label">
-              Filter by Customer:
-              <input type="text" id="deals-filter-customer" placeholder="Type name…" />
-            </label>
-          </div>
-        </header>
-
-        <div class="table-wrapper">
-          <table>
+        <div class="table-scroll">
+          <table class="data-table">
             <thead>
               <tr>
                 <th>Deal ID</th>
                 <th>Customer</th>
-                <th>#Tx</th>
-                <th>First Date</th>
-                <th>Last Date</th>
-                <th>Base Ccy</th>
+                <th>Base</th>
                 <th>Total Amount</th>
+                <th>Tx Count</th>
               </tr>
             </thead>
-            <tbody id="tbl-deals">
-              <tr><td colspan="7">Loading…</td></tr>
-            </tbody>
+            <tbody id="deals-tbody"></tbody>
           </table>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- TRANSACTIONS VIEW -->
-      <section id="transactions-view" class="view">
-        <header class="view-header">
-          <div>
-            <h1>Transactions</h1>
-            <p>Full transaction table (master list).</p>
-          </div>
-          <div class="view-actions">
-            <label class="inline-label">
-              Search:
-              <input type="text" id="tx-filter" placeholder="Deal, customer, exchanger…" />
-            </label>
-          </div>
-        </header>
-
-        <div class="table-wrapper">
-          <table>
+    <!-- TRANSACTIONS -->
+    <section class="view view-hidden" data-view="transactions">
+      <div class="card">
+        <div class="card-header-row">
+          <div class="card-label">Transactions</div>
+          <small id="tx-count-label" class="muted"></small>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table data-table-tight">
             <thead>
               <tr>
                 <th>Date</th>
                 <th>Deal ID</th>
-                <th>Customer</th>
-                <th>Exchanger</th>
                 <th>Type</th>
                 <th>Base</th>
                 <th>Amount</th>
                 <th>Target</th>
                 <th>Payable</th>
-                <th>Trader</th>
-                <th>Exchanger Rate</th>
-                <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="tbl-transactions">
-              <tr><td colspan="12">Loading…</td></tr>
-            </tbody>
+            <tbody id="tx-tbody"></tbody>
           </table>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- REPORTS VIEW -->
-      <section id="reports-view" class="view">
-        <header class="view-header">
-          <div>
-            <h1>Deal WhatsApp Report</h1>
-            <p>Select a Deal and get ready-to-send text.</p>
-          </div>
-          <div class="view-actions">
-            <label class="inline-label">
-              Deal:
-              <select id="report-deal-select"></select>
-            </label>
-          </div>
-        </header>
-
-        <div class="report-box">
-          <textarea id="report-output" readonly></textarea>
-          <button id="btn-copy-report" type="button">Copy to Clipboard</button>
-          <div id="report-status" class="report-status"></div>
+    <!-- REPORTS -->
+    <section class="view view-hidden" data-view="reports">
+      <div class="card">
+        <div class="card-label">Deal Report</div>
+        <p class="muted">Choose a deal to generate WhatsApp-style report.</p>
+        <div class="field-row">
+          <label for="report-deal-select">Deal ID</label>
+          <select id="report-deal-select"></select>
         </div>
-      </section>
+        <textarea id="report-output" class="report-box" rows="10" readonly></textarea>
+      </div>
+    </section>
 
-      <!-- NEW DEAL VIEW -->
-      <section id="newdeal-view" class="view">
-        <header class="view-header">
-          <div>
-            <h1>New Deal / Transaction</h1>
-            <p>Add or edit a single transaction line.</p>
+    <!-- NEW DEAL (local only) -->
+    <section class="view view-hidden" data-view="new-deal">
+      <div class="card">
+        <div class="card-label">New Deal (Local Test)</div>
+        <p class="muted">
+          Adds a transaction only to this device (localStorage).  
+          It does <b>not</b> write to data.json on GitHub.
+        </p>
+        <div class="form-grid">
+          <div class="field-row">
+            <label>Deal ID</label>
+            <input id="nd-deal-id" type="text" placeholder="e.g. GHOR-24Sep2025">
           </div>
-          <div class="view-actions">
-            <div class="badge-pill" id="form-mode-badge">Mode: New</div>
+          <div class="field-row">
+            <label>Date</label>
+            <input id="nd-date" type="date">
           </div>
-        </header>
-
-        <form id="deal-form" class="deal-form">
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="deal-id">Deal ID</label>
-              <input id="deal-id" name="deal_id" type="text" placeholder="Auto or manual…" />
-              <button type="button" class="btn-small" id="btn-generate-dealid">Auto-ID</button>
-            </div>
-
-            <div class="form-field">
-              <label for="tx-date">Date</label>
-              <input id="tx-date" name="tx_date" type="date" />
-            </div>
-
-            <div class="form-field">
-              <label for="customer">Customer</label>
-              <input id="customer" name="customer" type="text" />
-            </div>
-
-            <div class="form-field">
-              <label for="exchanger">Exchanger</label>
-              <input id="exchanger" name="exchanger" type="text" />
-            </div>
-
-            <div class="form-field">
-              <label for="account-id">Account ID</label>
-              <input id="account-id" name="account_id" type="text" />
-            </div>
-
-            <div class="form-field">
-              <label for="tx-type">Tx Type</label>
-              <select id="tx-type" name="tx_type">
-                <option value="inflow">Inflow</option>
-                <option value="outflow">Outflow</option>
-                <option value="conversion">Conversion</option>
-              </select>
-            </div>
-
-            <div class="form-field">
-              <label for="base-currency">Base Currency</label>
-              <select id="base-currency" name="base_currency">
-                <option value="RMB">RMB</option>
-                <option value="USD">USD</option>
-                <option value="IRR">IRR</option>
-                <option value="AED">AED</option>
-              </select>
-            </div>
-
-            <div class="form-field">
-              <label for="amount">Amount</label>
-              <input id="amount" name="amount" type="number" step="0.01" />
-            </div>
-
-            <div class="form-field">
-              <label for="target-currency">Target Currency</label>
-              <select id="target-currency" name="target_currency">
-                <option value="">—</option>
-                <option value="RMB">RMB</option>
-                <option value="USD">USD</option>
-                <option value="IRR">IRR</option>
-                <option value="AED">AED</option>
-              </select>
-            </div>
-
-            <div class="form-field">
-              <label for="payable">Payable</label>
-              <input id="payable" name="payable" type="number" step="0.01" />
-            </div>
-
-            <div class="form-field">
-              <label for="trader-rate">Trader Rate</label>
-              <input id="trader-rate" name="trader_rate" type="number" step="0.0001" />
-            </div>
-
-            <div class="form-field">
-              <label for="exchanger-rate">Exchanger Rate</label>
-              <input id="exchanger-rate" name="exchanger_rate" type="number" step="0.0001" />
-            </div>
-
-            <div class="form-field form-field-full">
-              <label for="notes">Notes</label>
-              <textarea id="notes" name="notes" rows="2"></textarea>
-            </div>
+          <div class="field-row">
+            <label>Type</label>
+            <input id="nd-type" type="text" placeholder="Inflow / Outflow / Conversion">
           </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn-primary" id="btn-save-deal">Save</button>
-            <button type="button" class="btn-neutral" id="btn-reset-form">Reset</button>
+          <div class="field-row">
+            <label>Base Currency</label>
+            <input id="nd-base" type="text" placeholder="RMB / USD / IRR ...">
           </div>
-        </form>
-      </section>
-    </main>
+          <div class="field-row">
+            <label>Amount</label>
+            <input id="nd-amount" type="number" step="0.01">
+          </div>
+          <div class="field-row">
+            <label>Target Currency</label>
+            <input id="nd-target" type="text" placeholder="IRR / USD / AED ...">
+          </div>
+          <div class="field-row">
+            <label>Payable</label>
+            <input id="nd-payable" type="number" step="0.01">
+          </div>
+        </div>
+        <button id="nd-save" class="pill pill-primary full-width">Save locally &amp; refresh views</button>
+        <p class="muted tiny">
+          Tip: use Debug → “Clear local overrides” if you want to remove these test records.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- DEBUG PANEL -->
+  <div id="debug-panel" class="debug-panel hidden">
+    <div class="debug-inner">
+      <div class="debug-header">
+        <span>Debug Console</span>
+        <button id="debug-close" class="icon-btn">&times;</button>
+      </div>
+      <pre id="debug-log" class="debug-log"></pre>
+      <div class="debug-actions">
+        <button id="debug-refresh" class="pill pill-primary">Soft reload data.json</button>
+        <button id="debug-clear-local" class="pill pill-outline">Clear local overrides</button>
+        <button id="debug-unregister-sw" class="pill pill-danger">Unregister Service Worker</button>
+      </div>
+    </div>
   </div>
-
-  <script src="app.js" defer></script>
 </body>
 </html>
