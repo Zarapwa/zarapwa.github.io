@@ -1,656 +1,444 @@
-// ExchangeMini FULL — Gold+ logic, but simplified for GitHub Pages
-// Data model is compatible with existing data.json
+// EXCHANGEMINI – mini FULL + Debug
+const APP_VERSION = "mini-1.0.3";
 
-const STORAGE_KEY = "exchangeMini_transactions_v1";
+const state = {
+  allTransactions: [],
+  deals: {},        // deal_id -> {deal_id, customer, base_currency, total_amount, count}
+  today: null,
+  lastLoadedAt: null
+};
 
-let transactions = [];
-let editingId = null;
+const LOCAL_KEY = "exchangeMini.localTx.v1";
 
-// ---------- UTILITIES ----------
-
-function parseNumber(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function formatNumber(n, decimals = 2) {
-  if (!Number.isFinite(n)) return "0";
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("app-version").textContent = APP_VERSION;
+  setupNav();
+  setupDebug();
+  setupNewDealForm();
+  detectToday();
+  loadData().then(() => {
+    renderAll();
+    showView("dashboard");
+    logDebug("✅ App initialized.");
   });
+});
+
+/* ---------- CORE ---------- */
+
+function detectToday() {
+  const now = new Date();
+  state.today = now.toISOString().slice(0, 10); // YYYY-MM-DD
+  const label = document.getElementById("today-label");
+  if (label) {
+    label.textContent = state.today;
+  }
 }
 
-function todayISO() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function formatDateDisplay(iso) {
-  if (!iso) return "—";
+async function loadData() {
+  logDebug("Loading data.json ...");
   try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
+    const resp = await fetch("data.json?v=" + APP_VERSION + "&t=" + Date.now());
+    const json = await resp.json();
+    const baseTx = Array.isArray(json) ? json : json.transactions || [];
+    const localTx = loadLocalOverrides();
+    state.allTransactions = baseTx.concat(localTx);
+    state.lastLoadedAt = new Date();
+
+    buildDealsPivot();
+    logDebug(
+      `Loaded ${baseTx.length} records from data.json + ${localTx.length} local override(s).`
+    );
+  } catch (err) {
+    console.error(err);
+    logDebug("❌ Error loading data.json: " + err.message);
   }
 }
 
-// ---------- LOAD / SAVE ----------
-
-async function loadTransactions() {
-  // 1) try localStorage
-  const local = localStorage.getItem(STORAGE_KEY);
-  if (local) {
-    try {
-      const arr = JSON.parse(local);
-      transactions = arr.map((row, idx) => ({
-        id: row.id ?? idx + 1,
-        ...row,
-      }));
-      renderAll();
-      return;
-    } catch (e) {
-      console.error("Failed to parse localStorage", e);
+function buildDealsPivot() {
+  const map = {};
+  for (const tx of state.allTransactions) {
+    const dealId = tx.deal_id || tx.dealID || "NO-ID";
+    const base = tx.base_currency || tx.base || "";
+    const amountNum = Number(tx.amount || 0);
+    const customer = tx.customer || tx.account_to || tx.account_from || "";
+    if (!map[dealId]) {
+      map[dealId] = {
+        deal_id: dealId,
+        base_currency: base,
+        total_amount: 0,
+        count: 0,
+        customer: customer
+      };
     }
+    map[dealId].total_amount += isFinite(amountNum) ? amountNum : 0;
+    map[dealId].count += 1;
   }
-
-  // 2) fallback to data.json
-  try {
-    const res = await fetch("data.json", { cache: "no-store" });
-    if (!res.ok) {
-      console.warn("data.json not found or not ok");
-      transactions = [];
-    } else {
-      const raw = await res.json();
-      if (Array.isArray(raw)) {
-        transactions = raw.map((row, idx) => ({
-          id: idx + 1,
-          deal_id: row.deal_id ?? row.Deal_ID ?? "",
-          tx_date: row.tx_date ?? row.date ?? row.TxDate ?? "",
-          customer: row.customer ?? row.Customer ?? "",
-          exchanger: row.exchanger ?? row.Exchanger ?? "",
-          account_id:
-            row.account_id ?? row.account_from ?? row.Account_ID ?? "",
-          tx_type: row.tx_type ?? row.TxType ?? row.type ?? "",
-          base_currency:
-            row.base_currency ?? row.BaseCurrency ?? row.base ?? "",
-          amount: parseNumber(
-            row.amount ?? row.Amount ?? row.base_amount ?? 0
-          ),
-          target_currency:
-            row.target_currency ?? row.TargetCurrency ?? row.target ?? "",
-          payable: parseNumber(
-            row.payable ?? row.Payable ?? row.target_amount ?? 0
-          ),
-          trader_rate: parseNumber(
-            row.trader_rate ?? row.TraderRate ?? row.trader ?? 0
-          ),
-          exchanger_rate: parseNumber(
-            row.exchanger_rate ?? row.ExchangerRate ?? row.exchange ?? 0
-          ),
-          notes: row.notes ?? "",
-          timestamp: row.timestamp ?? row.Timestamp ?? "",
-        }));
-      } else {
-        transactions = [];
-      }
-    }
-  } catch (e) {
-    console.error("Failed to load data.json", e);
-    transactions = [];
-  }
-
-  saveTransactions(); // seed localStorage
-  renderAll();
+  state.deals = map;
 }
 
-function saveTransactions() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-}
-
-// ---------- RENDER ----------
+/* ---------- RENDER ---------- */
 
 function renderAll() {
   renderDashboard();
-  renderDealsView();
-  renderTransactionsView();
-  renderReportsDealList();
+  renderDeals();
+  renderTransactions();
+  renderReportSelector();
 }
-
-// DASHBOARD
 
 function renderDashboard() {
-  const totalTx = transactions.length;
-  const totalDeals = new Set(transactions.map((t) => t.deal_id || "")).size;
+  const dealsArr = Object.values(state.deals);
+  const totalDeals = dealsArr.length;
+  const totalTx = state.allTransactions.length;
+  const todaysDeals = new Set();
 
-  const today = todayISO();
-  const todayCount = transactions.filter((t) => t.tx_date === today).length;
-
-  document.getElementById("card-total-deals").textContent = totalDeals || "0";
-  document.getElementById("card-today-deals").textContent = todayCount || "0";
-  document.getElementById("card-today-date").textContent =
-    formatDateDisplay(today);
-  document.getElementById("card-total-tx").textContent = totalTx || "0";
-
-  const inflowCount = transactions.filter(
-    (t) => (t.tx_type || "").toLowerCase() === "inflow"
-  ).length;
-  const outflowCount = transactions.filter(
-    (t) => (t.tx_type || "").toLowerCase() === "outflow"
-  ).length;
-  const convCount = transactions.filter(
-    (t) => (t.tx_type || "").toLowerCase() === "conversion"
-  ).length;
-
-  document.getElementById(
-    "card-tx-inflow"
-  ).textContent = `${inflowCount} In`;
-  document.getElementById(
-    "card-tx-conversion"
-  ).textContent = `${convCount} Conv`;
-  document.getElementById(
-    "card-tx-outflow"
-  ).textContent = `${outflowCount} Out`;
-
-  // Base currency summary
-  const summaryMap = new Map();
-  for (const t of transactions) {
-    const base = (t.base_currency || "").toUpperCase() || "—";
-    const entry = summaryMap.get(base) || { count: 0, amount: 0 };
-    entry.count += 1;
-    entry.amount += parseNumber(t.amount);
-    summaryMap.set(base, entry);
-  }
-
-  const tbody = document.getElementById("tbl-dashboard-base-summary");
-  tbody.innerHTML = "";
-  if (summaryMap.size === 0) {
-    tbody.innerHTML = `<tr><td colspan="3">No data</td></tr>`;
-  } else {
-    for (const [base, info] of summaryMap.entries()) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${base}</td>
-        <td>${info.count}</td>
-        <td>${formatNumber(info.amount)}</td>
-      `;
-      tbody.appendChild(tr);
+  for (const tx of state.allTransactions) {
+    const date = (tx.tx_date || tx.date || "").slice(0, 10);
+    if (date === state.today) {
+      const id = tx.deal_id || tx.dealID || "NO-ID";
+      todaysDeals.add(id);
     }
   }
 
-  const lastTx = transactions[transactions.length - 1];
-  if (lastTx) {
-    document.getElementById(
-      "card-last-updated"
-    ).textContent = `Last updated: ${formatDateDisplay(lastTx.tx_date)}`;
-  } else {
-    document.getElementById("card-last-updated").textContent =
-      "Last updated: —";
-  }
-}
+  document.getElementById("total-deals").textContent = totalDeals;
+  document.getElementById("total-transactions").textContent = totalTx;
+  document.getElementById("todays-deals").textContent = todaysDeals.size;
 
-// DEALS
-
-function renderDealsView() {
-  const tbody = document.getElementById("tbl-deals");
-  const filterTxt = (
-    document.getElementById("deals-filter-customer").value || ""
-  )
-    .toLowerCase()
-    .trim();
-
-  const groupMap = new Map();
-
-  for (const t of transactions) {
-    const key = t.deal_id || "";
-    if (!key) continue;
-    const group = groupMap.get(key) || {
-      deal_id: t.deal_id,
-      customer: t.customer,
-      base_currency: t.base_currency,
-      first_date: t.tx_date,
-      last_date: t.tx_date,
-      count: 0,
-      total_amount: 0,
-    };
-    group.count += 1;
-    group.total_amount += parseNumber(t.amount);
-    if (!group.first_date || t.tx_date < group.first_date) {
-      group.first_date = t.tx_date;
-    }
-    if (!group.last_date || t.tx_date > group.last_date) {
-      group.last_date = t.tx_date;
-    }
-    groupMap.set(key, group);
+  // currency summary
+  const currencySummary = {};
+  for (const tx of state.allTransactions) {
+    const cur = tx.base_currency || tx.base || "N/A";
+    const amt = Number(tx.amount || 0);
+    if (!currencySummary[cur]) currencySummary[cur] = 0;
+    currencySummary[cur] += isFinite(amt) ? amt : 0;
   }
 
-  let rows = Array.from(groupMap.values());
-
-  if (filterTxt) {
-    rows = rows.filter((g) =>
-      (g.customer || "").toLowerCase().includes(filterTxt)
-    );
-  }
-
-  rows.sort((a, b) => (a.last_date || "").localeCompare(b.last_date || ""));
-
-  tbody.innerHTML = "";
-  if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7">No deals found</td></tr>`;
+  const wrapper = document.getElementById("currency-summary");
+  wrapper.innerHTML = "";
+  const entries = Object.entries(currencySummary);
+  if (!entries.length) {
+    wrapper.textContent = "No data.";
     return;
   }
 
-  for (const g of rows) {
+  entries.forEach(([cur, total]) => {
+    const row = document.createElement("div");
+    row.className = "mini-table-row";
+    const left = document.createElement("span");
+    left.textContent = cur;
+    const right = document.createElement("span");
+    right.textContent = formatNumber(total);
+    row.append(left, right);
+    wrapper.appendChild(row);
+  });
+}
+
+function renderDeals() {
+  const tbody = document.getElementById("deals-tbody");
+  tbody.innerHTML = "";
+  const dealsArr = Object.values(state.deals);
+
+  document.getElementById("deals-count-label").textContent =
+    dealsArr.length + " deal(s)";
+
+  dealsArr.sort((a, b) => a.deal_id.localeCompare(b.deal_id));
+
+  for (const d of dealsArr) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${g.deal_id || "—"}</td>
-      <td>${g.customer || "—"}</td>
-      <td>${g.count}</td>
-      <td>${formatDateDisplay(g.first_date)}</td>
-      <td>${formatDateDisplay(g.last_date)}</td>
-      <td>${(g.base_currency || "").toUpperCase()}</td>
-      <td>${formatNumber(g.total_amount)}</td>
+      <td>${escapeHtml(d.deal_id)}</td>
+      <td>${escapeHtml(d.customer || "")}</td>
+      <td>${escapeHtml(d.base_currency || "")}</td>
+      <td>${formatNumber(d.total_amount)}</td>
+      <td>${d.count}</td>
     `;
     tbody.appendChild(tr);
   }
 }
 
-// TRANSACTIONS
-
-function renderTransactionsView() {
-  const tbody = document.getElementById("tbl-transactions");
-  const filterTxt = (document.getElementById("tx-filter").value || "")
-    .toLowerCase()
-    .trim();
-
-  let rows = [...transactions];
-
-  if (filterTxt) {
-    rows = rows.filter((t) => {
-      const haystack = [
-        t.deal_id,
-        t.customer,
-        t.exchanger,
-        t.account_id,
-        t.tx_type,
-        t.base_currency,
-        t.target_currency,
-        t.notes,
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(filterTxt);
-    });
-  }
-
-  rows.sort((a, b) => (a.tx_date || "").localeCompare(b.tx_date || ""));
-
+function renderTransactions() {
+  const tbody = document.getElementById("tx-tbody");
   tbody.innerHTML = "";
-  if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="12">No transactions</td></tr>`;
-    return;
-  }
+  const txs = [...state.allTransactions];
 
-  for (const t of rows) {
+  txs.sort((a, b) => {
+    const da = (a.tx_date || a.date || "").localeCompare(b.tx_date || b.date || "");
+    if (da !== 0) return da;
+    return (a.deal_id || "").localeCompare(b.deal_id || "");
+  });
+
+  document.getElementById("tx-count-label").textContent =
+    txs.length + " transaction(s)";
+
+  for (const tx of txs) {
+    const date = (tx.tx_date || tx.date || "").slice(0, 10);
+    const deal = tx.deal_id || tx.dealID || "";
+    const type = tx.tx_type || tx.type || "";
+    const base = tx.base_currency || tx.base || "";
+    const amount = formatNumber(tx.amount);
+    const target = tx.target_currency || "";
+    const payable = formatNumber(tx.payable || tx.target_amount);
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${formatDateDisplay(t.tx_date)}</td>
-      <td>${t.deal_id || "—"}</td>
-      <td>${t.customer || "—"}</td>
-      <td>${t.exchanger || "—"}</td>
-      <td>${t.tx_type || "—"}</td>
-      <td>${(t.base_currency || "").toUpperCase()}</td>
-      <td>${formatNumber(parseNumber(t.amount))}</td>
-      <td>${(t.target_currency || "").toUpperCase()}</td>
-      <td>${formatNumber(parseNumber(t.payable))}</td>
-      <td>${t.trader_rate || "—"}</td>
-      <td>${t.exchanger_rate || "—"}</td>
-      <td>
-        <div class="tx-actions">
-          <button type="button" data-action="edit" data-id="${t.id}">Edit</button>
-          <button type="button" class="tx-delete" data-action="delete" data-id="${t.id}">Del</button>
-        </div>
-      </td>
+      <td>${escapeHtml(date)}</td>
+      <td>${escapeHtml(deal)}</td>
+      <td>${escapeHtml(type)}</td>
+      <td>${escapeHtml(base)}</td>
+      <td>${amount}</td>
+      <td>${escapeHtml(target)}</td>
+      <td>${payable}</td>
     `;
     tbody.appendChild(tr);
   }
 }
 
-// REPORTS
-
-function renderReportsDealList() {
+function renderReportSelector() {
   const select = document.getElementById("report-deal-select");
-  const deals = new Map();
-
-  for (const t of transactions) {
-    if (!t.deal_id) continue;
-    if (!deals.has(t.deal_id)) {
-      deals.set(t.deal_id, t.customer || "");
-    }
-  }
-
+  const output = document.getElementById("report-output");
   select.innerHTML = "";
-  if (deals.size === 0) {
+
+  const dealsArr = Object.values(state.deals).sort((a, b) =>
+    a.deal_id.localeCompare(b.deal_id)
+  );
+
+  if (!dealsArr.length) {
     const opt = document.createElement("option");
-    opt.value = "";
     opt.textContent = "No deals";
     select.appendChild(opt);
+    output.value = "";
     return;
   }
 
-  for (const [dealId, cust] of deals.entries()) {
+  dealsArr.forEach((d, idx) => {
     const opt = document.createElement("option");
-    opt.value = dealId;
-    opt.textContent = cust ? `${dealId} — ${cust}` : dealId;
+    opt.value = d.deal_id;
+    opt.textContent = d.deal_id;
+    if (idx === 0) opt.selected = true;
     select.appendChild(opt);
-  }
+  });
 
-  // Auto-generate first one
-  generateReportForSelectedDeal();
+  select.addEventListener("change", () => {
+    output.value = buildReportText(select.value);
+  });
+
+  // initial
+  output.value = buildReportText(dealsArr[0].deal_id);
 }
 
-function generateReportForSelectedDeal() {
-  const select = document.getElementById("report-deal-select");
-  const dealId = select.value;
-  const output = document.getElementById("report-output");
-  const status = document.getElementById("report-status");
-
-  if (!dealId) {
-    output.value = "";
-    status.textContent = "";
-    return;
-  }
-
-  const rows = transactions.filter((t) => t.deal_id === dealId);
-  if (rows.length === 0) {
-    output.value = "";
-    status.textContent = "No rows for this deal.";
-    return;
-  }
-
-  const customer = rows[0].customer || "";
-  let text = "";
-  text += `GHorbanzadeh Deal Report\n`;
-  text += `🆔 Deal ID: ${dealId}\n`;
-  text += `👤 Customer: ${customer || "—"}\n`;
-  text += `━━━━━━━━━━━━━━━\n`;
-
-  const inflow = rows.filter(
-    (t) => (t.tx_type || "").toLowerCase() === "inflow"
+function buildReportText(dealId) {
+  const txs = state.allTransactions.filter(
+    (t) => (t.deal_id || t.dealID || "") === dealId
   );
-  const conv = rows.filter(
-    (t) => (t.tx_type || "").toLowerCase() === "conversion"
-  );
-  const outflow = rows.filter(
-    (t) => (t.tx_type || "").toLowerCase() === "outflow"
-  );
+  if (!txs.length) return "No transactions for this deal.";
 
-  if (inflow.length) {
-    text += `📥 Inflow\n`;
-    for (const r of inflow) {
-      text += `➕ ${formatNumber(r.amount)} ${r.base_currency} – Inflow\n`;
+  const first = txs[0];
+  const customer = first.customer || first.account_to || first.account_from || "";
+  const header = `GHorbanzadeh Deal Report
+🆔 Deal ID: ${dealId}
+━━━━━━━━━━━━━━━
+💱 Transactions`;
+
+  const lines = [];
+  for (const tx of txs) {
+    const type = (tx.tx_type || tx.type || "").toLowerCase();
+    const base = tx.base_currency || tx.base || "";
+    const amount = formatNumber(tx.amount);
+    const rate = tx.trader_rate || tx.rate || "";
+    const target = tx.target_currency || "";
+    const payable = formatNumber(tx.payable || tx.target_amount);
+    if (type.includes("inflow")) {
+      lines.push(`📥 Inflow\n➕ ${amount} ${base} – Inflow`);
+    } else if (type.includes("outflow")) {
+      lines.push(`📤 Outflow\n➖ ${amount} ${base} – Outflow`);
+    } else if (type.includes("conv")) {
+      lines.push(
+        `♻️ Conversion\n➖ ${amount} ${base} × ${rate} → ${payable} ${target}`
+      );
+    } else {
+      lines.push(`• ${amount} ${base} – ${tx.tx_type || tx.type || "Tx"}`);
     }
-    text += `\n`;
   }
 
-  if (conv.length) {
-    text += `♻️ Conversion\n`;
-    for (const r of conv) {
-      text += `➖ ${formatNumber(r.amount)} ${r.base_currency} × ${
-        r.trader_rate || "-"
-      } → ${formatNumber(r.payable)} ${r.target_currency}\n`;
-    }
-    text += `\n`;
-  }
+  const summary = `━━━━━━━━━━━━━━━
+Customer: ${customer || "-"}
+(Generated by ExchangeMini v${APP_VERSION})`;
 
-  if (outflow.length) {
-    text += `📤 Outflow\n`;
-    for (const r of outflow) {
-      text += `➖ ${formatNumber(r.amount)} ${r.base_currency} – Outflow\n`;
-    }
-    text += `\n`;
-  }
-
-  output.value = text.trim();
-  status.textContent = `Report ready for ${dealId}`;
+  return header + "\n" + lines.join("\n") + "\n" + summary;
 }
 
-// ---------- NAVIGATION ----------
+/* ---------- NAV ---------- */
 
-function setupNavigation() {
-  const buttons = document.querySelectorAll(".nav-btn");
-  const views = document.querySelectorAll(".view");
-
-  buttons.forEach((btn) => {
+function setupNav() {
+  const links = document.querySelectorAll(".nav-link");
+  links.forEach((btn) => {
     btn.addEventListener("click", () => {
-      const target = btn.dataset.view;
-      buttons.forEach((b) => b.classList.remove("active"));
+      const view = btn.dataset.view;
+      showView(view);
+      links.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-
-      views.forEach((v) => {
-        if (v.id === target) {
-          v.classList.add("active");
-        } else {
-          v.classList.remove("active");
-        }
-      });
     });
   });
 }
 
-// ---------- FORM / NEW DEAL ----------
-
-function fillFormFromTx(tx) {
-  document.getElementById("deal-id").value = tx.deal_id || "";
-  document.getElementById("tx-date").value = tx.tx_date || "";
-  document.getElementById("customer").value = tx.customer || "";
-  document.getElementById("exchanger").value = tx.exchanger || "";
-  document.getElementById("account-id").value = tx.account_id || "";
-  document.getElementById("tx-type").value = tx.tx_type || "inflow";
-  document.getElementById("base-currency").value =
-    tx.base_currency || "RMB";
-  document.getElementById("amount").value =
-    tx.amount != null ? tx.amount : "";
-  document.getElementById("target-currency").value =
-    tx.target_currency || "";
-  document.getElementById("payable").value =
-    tx.payable != null ? tx.payable : "";
-  document.getElementById("trader-rate").value =
-    tx.trader_rate != null ? tx.trader_rate : "";
-  document.getElementById("exchanger-rate").value =
-    tx.exchanger_rate != null ? tx.exchanger_rate : "";
-  document.getElementById("notes").value = tx.notes || "";
-
-  document.getElementById(
-    "form-mode-badge"
-  ).textContent = `Mode: Edit #${tx.id}`;
-}
-
-function resetForm() {
-  editingId = null;
-  document.getElementById("deal-form").reset();
-  document.getElementById("form-mode-badge").textContent = "Mode: New";
-  // default date today
-  document.getElementById("tx-date").value = todayISO();
-}
-
-function handleFormSubmit(e) {
-  e.preventDefault();
-  const form = e.target;
-
-  const tx = {
-    deal_id: form["deal_id"].value.trim(),
-    tx_date: form["tx_date"].value,
-    customer: form["customer"].value.trim(),
-    exchanger: form["exchanger"].value.trim(),
-    account_id: form["account_id"].value.trim(),
-    tx_type: form["tx_type"].value,
-    base_currency: form["base_currency"].value,
-    amount: parseNumber(form["amount"].value),
-    target_currency: form["target_currency"].value,
-    payable: parseNumber(form["payable"].value),
-    trader_rate: parseNumber(form["trader_rate"].value),
-    exchanger_rate: parseNumber(form["exchanger_rate"].value),
-    notes: form["notes"].value.trim(),
-    timestamp: new Date().toISOString(),
-  };
-
-  if (!tx.deal_id) {
-    alert("Deal ID is required (you can use Auto-ID).");
-    return;
-  }
-
-  if (!tx.tx_date) {
-    alert("Date is required.");
-    return;
-  }
-
-  if (editingId != null) {
-    const idx = transactions.findIndex((t) => t.id === editingId);
-    if (idx !== -1) {
-      transactions[idx] = { ...transactions[idx], ...tx };
+function showView(name) {
+  const views = document.querySelectorAll(".view");
+  views.forEach((v) => {
+    if (v.dataset.view === name) {
+      v.classList.remove("view-hidden");
+    } else {
+      v.classList.add("view-hidden");
     }
-  } else {
-    const newId =
-      transactions.reduce((max, t) => Math.max(max, t.id || 0), 0) + 1;
-    transactions.push({ id: newId, ...tx });
-  }
-
-  saveTransactions();
-  renderAll();
-  resetForm();
-  alert("Saved.");
+  });
 }
 
-// AUTO DEAL ID (simple)
+/* ---------- NEW DEAL (LOCAL) ---------- */
 
-function generateDealId() {
-  const customer = (document.getElementById("customer").value || "")
-    .trim()
-    .toUpperCase();
-  const short =
-    customer.length >= 4
-      ? customer.slice(0, 4)
-      : (customer || "DEAL").padEnd(4, "X");
-
-  const dt = document.getElementById("tx-date").value || todayISO();
-  const d = new Date(dt);
-  const day = String(d.getDate()).padStart(2, "0");
-  const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG",
-    "SEP", "OCT", "NOV", "DEC"];
-  const month = monthNames[d.getMonth()] || "XXX";
-  const year = d.getFullYear();
-
-  const baseId = `${short}-${day}${month}${year}`;
-
-  const existing = transactions.filter((t) =>
-    (t.deal_id || "").startsWith(baseId)
-  );
-  const seq = String(existing.length + 1).padStart(3, "0");
-
-  const finalId = `${baseId}-${seq}`;
-  document.getElementById("deal-id").value = finalId;
-}
-
-// EDIT / DELETE HANDLERS
-
-function handleTxTableClick(e) {
-  const btn = e.target.closest("button");
+function setupNewDealForm() {
+  const btn = document.getElementById("nd-save");
   if (!btn) return;
-  const id = Number(btn.dataset.id);
-  const action = btn.dataset.action;
-
-  if (!id || !action) return;
-
-  const tx = transactions.find((t) => t.id === id);
-  if (!tx) return;
-
-  if (action === "edit") {
-    editingId = id;
-    fillFormFromTx(tx);
-
-    // Switch to New Deal view
-    document
-      .querySelectorAll(".nav-btn")
-      .forEach((b) => b.classList.remove("active"));
-    document
-      .querySelector('.nav-btn[data-view="newdeal-view"]')
-      .classList.add("active");
-    document
-      .querySelectorAll(".view")
-      .forEach((v) => v.classList.remove("active"));
-    document.getElementById("newdeal-view").classList.add("active");
-  } else if (action === "delete") {
-    if (!confirm("Delete this transaction?")) return;
-    const newArr = transactions.filter((t) => t.id !== id);
-    transactions = newArr;
-    saveTransactions();
+  btn.addEventListener("click", () => {
+    const tx = {
+      deal_id: document.getElementById("nd-deal-id").value.trim(),
+      tx_date: document.getElementById("nd-date").value,
+      tx_type: document.getElementById("nd-type").value.trim(),
+      base_currency: document.getElementById("nd-base").value.trim(),
+      amount: Number(document.getElementById("nd-amount").value),
+      target_currency: document.getElementById("nd-target").value.trim(),
+      payable: Number(document.getElementById("nd-payable").value),
+      source: "LOCAL"
+    };
+    if (!tx.deal_id) {
+      alert("Deal ID is required.");
+      return;
+    }
+    const stored = loadLocalOverrides();
+    stored.push(tx);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(stored));
+    logDebug("💾 Saved local transaction override for deal " + tx.deal_id);
+    buildDealsPivot();
     renderAll();
+    showView("dashboard");
+  });
+}
+
+function loadLocalOverrides() {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.warn("Local override parse error", e);
+    return [];
   }
 }
 
-// REPORT COPY
+/* ---------- DEBUG PANEL ---------- */
 
-function handleCopyReport() {
-  const txt = document.getElementById("report-output").value;
-  const status = document.getElementById("report-status");
-  if (!txt) {
-    status.textContent = "Nothing to copy.";
-    return;
-  }
-  navigator.clipboard
-    .writeText(txt)
-    .then(() => {
-      status.textContent = "Copied to clipboard.";
-      setTimeout(() => (status.textContent = ""), 1500);
-    })
-    .catch(() => {
-      status.textContent = "Copy failed.";
+function setupDebug() {
+  const btn = document.getElementById("debug-button");
+  const panel = document.getElementById("debug-panel");
+  const closeBtn = document.getElementById("debug-close");
+  const refreshBtn = document.getElementById("debug-refresh");
+  const clearBtn = document.getElementById("debug-clear-local");
+  const swBtn = document.getElementById("debug-unregister-sw");
+
+  if (!btn || !panel) return;
+
+  btn.addEventListener("click", () => {
+    panel.classList.remove("hidden");
+    renderDebugInfo();
+  });
+  closeBtn.addEventListener("click", () => {
+    panel.classList.add("hidden");
+  });
+
+  refreshBtn.addEventListener("click", async () => {
+    logDebug("🔄 Soft reload requested from Debug.");
+    await loadData();
+    renderAll();
+    renderDebugInfo();
+  });
+
+  clearBtn.addEventListener("click", () => {
+    localStorage.removeItem(LOCAL_KEY);
+    logDebug("🧹 Local overrides cleared.");
+    loadData().then(() => {
+      renderAll();
+      renderDebugInfo();
     });
+  });
+
+  swBtn.addEventListener("click", async () => {
+    if (!("serviceWorker" in navigator)) {
+      logDebug("Service workers are not supported in this browser.");
+      return;
+    }
+    const regs = await navigator.serviceWorker.getRegistrations();
+    if (!regs.length) {
+      logDebug("No service worker registrations found.");
+      return;
+    }
+    for (const r of regs) {
+      await r.unregister();
+    }
+    logDebug(
+      "🧨 Service workers unregistered. Close all Safari tabs for this site and reopen."
+    );
+  });
 }
 
-// ---------- INIT ----------
+function renderDebugInfo() {
+  const logEl = document.getElementById("debug-log");
+  const totalDeals = Object.keys(state.deals).length;
+  const totalTx = state.allTransactions.length;
+  const last = state.lastLoadedAt
+    ? state.lastLoadedAt.toLocaleString()
+    : "not loaded";
 
-document.addEventListener("DOMContentLoaded", () => {
-  setupNavigation();
+  const lines = [
+    `Version: v${APP_VERSION}`,
+    `Total deals: ${totalDeals}`,
+    `Total transactions: ${totalTx}`,
+    `Today: ${state.today}`,
+    `Last loaded: ${last}`
+  ];
 
-  document
-    .getElementById("deal-form")
-    .addEventListener("submit", handleFormSubmit);
-  document
-    .getElementById("btn-reset-form")
-    .addEventListener("click", resetForm);
-  document
-    .getElementById("btn-generate-dealid")
-    .addEventListener("click", generateDealId);
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      const swLines = [`Service worker registrations: ${regs.length}`];
+      regs.forEach((r, idx) => {
+        swLines.push(
+          ` [${idx}] scope=${r.scope} active=${!!r.active} installing=${!!r.installing}`
+        );
+      });
+      logEl.textContent = lines.concat(swLines).join("\n");
+    });
+  } else {
+    logEl.textContent = lines.concat(["Service workers: not supported"]).join("\n");
+  }
+}
 
-  document
-    .getElementById("tbl-transactions")
-    .addEventListener("click", handleTxTableClick);
+function logDebug(msg) {
+  console.log("[ExchangeMini]", msg);
+  const logEl = document.getElementById("debug-log");
+  if (!logEl) return;
+  logEl.textContent += (logEl.textContent ? "\n" : "") + msg;
+}
 
-  document
-    .getElementById("tx-filter")
-    .addEventListener("input", renderTransactionsView);
-  document
-    .getElementById("deals-filter-customer")
-    .addEventListener("input", renderDealsView);
+/* ---------- HELPERS ---------- */
 
-  document
-    .getElementById("report-deal-select")
-    .addEventListener("change", generateReportForSelectedDeal);
-  document
-    .getElementById("btn-copy-report")
-    .addEventListener("click", handleCopyReport);
+function formatNumber(value) {
+  const n = Number(value);
+  if (!isFinite(n)) return "";
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
 
-  resetForm();
-  loadTransactions();
-});
+function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
