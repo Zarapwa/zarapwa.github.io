@@ -1,12 +1,7 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
 body {
-  background: radial-gradient(circle at top, #1a1f2b, #0b0f1a);
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: radial-gradient(circle at top, #1b2338, #05070f);
   color: #fff;
 }
 
@@ -15,15 +10,15 @@ body {
   min-height: 100vh;
 }
 
-/* NAV */
 .app-nav {
-  width: 220px;
-  padding: 20px;
+  width: 200px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .nav-link {
-  width: 100%;
-  margin-bottom: 14px;
   padding: 14px;
   border-radius: 999px;
   border: none;
@@ -31,21 +26,19 @@ body {
   color: #fff;
   font-size: 16px;
   cursor: pointer;
-  transition: background 0.2s;
 }
 
 .nav-link.active {
-  background: #f4c76b;
+  background: #f4c96a;
   color: #000;
 }
 
-/* MAIN */
 .app-main {
   flex: 1;
   padding: 32px;
 }
 
-/* VIEWS (IMPORTANT PART) */
+/* VIEW LOGIC — THIS IS THE KEY */
 .view {
   display: block;
 }
