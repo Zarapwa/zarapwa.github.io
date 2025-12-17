@@ -1,58 +1,55 @@
-body {
+* {
+  box-sizing: border-box;
   margin: 0;
-  font-family: system-ui, sans-serif;
-  background: radial-gradient(circle at top, #1b2435, #05070d);
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  background: radial-gradient(circle at top, #1a1f2b, #0b0f1a);
   color: #fff;
 }
 
-.app-header {
-  padding: 16px;
-}
-
-.app-nav {
+.app {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  min-height: 100vh;
 }
 
-.pill {
+/* NAV */
+.app-nav {
+  width: 220px;
+  padding: 20px;
+}
+
+.nav-link {
+  width: 100%;
+  margin-bottom: 14px;
   padding: 14px;
   border-radius: 999px;
   border: none;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.08);
   color: #fff;
   font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-.pill.active {
+.nav-link.active {
   background: #f4c76b;
   color: #000;
 }
 
+/* MAIN */
 .app-main {
-  padding: 16px;
+  flex: 1;
+  padding: 32px;
 }
 
+/* VIEWS (IMPORTANT PART) */
 .view {
-  display: none;
-}
-
-.view:not(.hidden) {
   display: block;
 }
 
 .hidden {
   display: none !important;
-}
-
-.cards {
-  display: grid;
-  gap: 12px;
-}
-
-.card {
-  background: rgba(255,255,255,0.08);
-  padding: 16px;
-  border-radius: 16px;
 }
