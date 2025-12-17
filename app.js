@@ -269,30 +269,40 @@ Customer: ${customer || "-"}
 /* ---------- NAV ---------- */
 
 function setupNav() {
-  const links = document.querySelectorAll(".nav-link");
-  links.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const view = btn.dataset.view;
-      showView(view);
-      links.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-    });
+  // event delegation = روی iOS هم مطمئن‌تره
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".nav-link");
+    if (!btn) return;
+
+    const view = btn.dataset.view;
+    if (!view) return;
+
+    // Debug
+    if (window.__debugLog) window.__debugLog(`NAV click -> ${view}`);
+
+    showView(view);
+
+    document.querySelectorAll(".nav-link").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
   });
 }
 
 function showView(name) {
-  const views = document.querySelectorAll(".view");
-  views.forEach((v) => {
-    if (v.dataset.view === name) {
-      v.classList.remove("view-hidden");
-    } else {
-      v.classList.add("view-hidden");
-    }
+  const views = document.querySelectorAll("section.view");
+  views.forEach(v => {
+    const isTarget = (v.dataset.view === name);
+
+    // دو حالت را همزمان پوشش می‌دهیم (active و hidden)
+    v.classList.toggle("active", isTarget);
+    v.classList.toggle("hidden", !isTarget);
+
+    // اگر قبلاً view-hidden داشتی هم خاموشش کن
+    v.classList.toggle("view-hidden", !isTarget);
   });
+
+  // Debug
+  if (window.__debugLog) window.__debugLog(`showView() -> ${name}`);
 }
-
-/* ---------- NEW DEAL (LOCAL) ---------- */
-
 function setupNewDealForm() {
   const btn = document.getElementById("nd-save");
   if (!btn) return;
@@ -445,3 +455,4 @@ function escapeHtml(str) {
 document.addEventListener("DOMContentLoaded", () => {
   setupNav();
 });
+
