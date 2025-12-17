@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EXCHANGEMINI</title>
 
-  <link rel="stylesheet" href="styles.css?v=1" />
-  <script defer src="app.js?v=mini-1.0.3"></script>
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="app.js"></script>
 </head>
 
 <body class="app-shell">
@@ -35,62 +35,28 @@
 
   <!-- DASHBOARD -->
   <section class="view" data-view="dashboard">
-    <div class="card-grid">
-      <div class="card">
-        <div class="card-label">Total Deals</div>
-        <div class="card-value" id="total-deals">0</div>
-        <div class="card-caption">Unique Deal IDs</div>
-      </div>
-
-      <div class="card">
-        <div class="card-label">Today's Deals</div>
-        <div class="card-value" id="todays-deals">0</div>
-        <div class="card-caption" id="today-label"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-label">Total Transactions</div>
-        <div class="card-value" id="total-transactions">0</div>
-        <div class="card-caption">All records from data.json</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-label">Deals by Currency</div>
-      <div id="currency-summary" class="mini-table"></div>
-    </div>
+    <h2>Dashboard</h2>
+    <div class="card">Dashboard content</div>
   </section>
 
   <!-- DEALS -->
   <section class="view hidden" data-view="deals">
-    <div class="card">
-      <h2>Deals</h2>
-      <div id="deals-table"></div>
-    </div>
+    <h2>Deals</h2>
   </section>
 
   <!-- TRANSACTIONS -->
   <section class="view hidden" data-view="transactions">
-    <div class="card">
-      <h2>Transactions</h2>
-      <div id="transactions-table"></div>
-    </div>
+    <h2>Transactions</h2>
   </section>
 
   <!-- REPORTS -->
   <section class="view hidden" data-view="reports">
-    <div class="card">
-      <h2>Reports</h2>
-      <div id="reports-content"></div>
-    </div>
+    <h2>Reports</h2>
   </section>
 
   <!-- NEW DEAL -->
   <section class="view hidden" data-view="new-deal">
-    <div class="card">
-      <h2>New Deal</h2>
-      <form id="new-deal-form"></form>
-    </div>
+    <h2>New Deal</h2>
   </section>
 
 </main>
