@@ -1,164 +1,177 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>ExchangeMini</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>EXCHANGEMINI</title>
 
-  <link rel="stylesheet" href="./styles.css?v=1.0.4" />
-  <script defer src="./app.js?v=1.0.4"></script>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css?v=1.0.0" />
 </head>
 
 <body>
-  <header class="app-header">
-    <div class="brand">
-      <div class="brand-title">EXCHANGEMINI</div>
-      <div class="brand-sub">Deal &amp; Cash Flow Console</div>
-    </div>
-
-    <div class="header-right">
-      <button id="debugBtn" class="pill pill-outline" type="button">Debug</button>
-      <span class="version-pill" id="appVersion">vmini</span>
-    </div>
-  </header>
-
   <div class="app-shell">
-    <aside class="app-nav" aria-label="Navigation">
-      <button class="pill nav-link is-active" type="button" data-view="dashboard">Dashboard</button>
-      <button class="pill nav-link" type="button" data-view="deals">Deals</button>
-      <button class="pill nav-link" type="button" data-view="transactions">Transactions</button>
-      <button class="pill nav-link" type="button" data-view="reports">Reports</button>
-      <button class="pill nav-link" type="button" data-view="new-deal">New Deal</button>
-    </aside>
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-title">EXCHANGEMINI</div>
+        <div class="brand-sub">Deal &amp; Cash Flow Console</div>
+      </div>
+
+      <div class="header-right">
+        <button id="btn-debug" class="pill pill-ghost" type="button" aria-pressed="false">Debug</button>
+        <div class="pill pill-ghost" id="build-badge">vmini-1.0.0</div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary navigation">
+      <button class="nav-link pill pill-ghost active" data-view="dashboard" type="button">Dashboard</button>
+      <button class="nav-link pill pill-ghost" data-view="deals" type="button">Deals</button>
+      <button class="nav-link pill pill-ghost" data-view="transactions" type="button">Transactions</button>
+      <button class="nav-link pill pill-ghost" data-view="reports" type="button">Reports</button>
+      <button class="nav-link pill pill-ghost" data-view="newdeal" type="button">New Deal</button>
+    </nav>
 
     <main class="app-main">
-      <!-- DASHBOARD -->
-      <section class="view is-active" data-view="dashboard">
-        <h2 class="h2">Dashboard</h2>
+      <!-- Dashboard -->
+      <section class="view" data-view="dashboard">
+        <div class="view-head">
+          <h1>Dashboard</h1>
+          <div class="muted" id="dash-status">Loading…</div>
+        </div>
 
-        <div class="card-grid">
+        <div class="grid">
           <div class="card">
             <div class="card-label">Total Deals</div>
-            <div class="card-value" id="dashTotalDeals">0</div>
-            <div class="card-caption">Unique Deal IDs</div>
-          </div>
-
-          <div class="card">
-            <div class="card-label">Today’s Deals</div>
-            <div class="card-value" id="dashTodayDeals">0</div>
-            <div class="card-caption" id="dashTodayLabel">—</div>
+            <div class="card-value" id="kpi-total-deals">0</div>
+            <div class="card-note muted">Unique Deal IDs</div>
           </div>
 
           <div class="card">
             <div class="card-label">Total Transactions</div>
-            <div class="card-value" id="dashTotalTx">0</div>
-            <div class="card-caption">All records from data.json</div>
+            <div class="card-value" id="kpi-total-tx">0</div>
+            <div class="card-note muted">Rows in data.json</div>
+          </div>
+
+          <div class="card">
+            <div class="card-label">Last Tx Date</div>
+            <div class="card-value" id="kpi-last-date">—</div>
+            <div class="card-note muted">Based on tx_date</div>
+          </div>
+
+          <div class="card">
+            <div class="card-label">Selected Deal</div>
+            <div class="card-value" id="kpi-selected-deal">All</div>
+            <div class="card-note muted">Tap a deal in Deals</div>
           </div>
         </div>
 
-        <div class="card mt">
-          <div class="card-label">Deals by Currency (Base)</div>
-          <div id="dashCurrencySummary" class="mini-table"></div>
-        </div>
+        <div class="card wide">
+          <div class="row between">
+            <div>
+              <div class="card-label">Quick list</div>
+              <div class="muted">Latest deals (tap to open)</div>
+            </div>
+            <button class="pill pill-ghost" id="btn-clear-selection" type="button">Clear selection</button>
+          </div>
 
-        <div class="card mt">
-          <div class="card-label">Latest Activity</div>
-          <div id="dashLatest" class="mini-table"></div>
+          <div class="list" id="dash-deal-list"></div>
         </div>
       </section>
 
-      <!-- DEALS -->
-      <section class="view" data-view="deals">
-        <div class="row-between">
-          <h2 class="h2">Deals</h2>
-          <div class="muted" id="dealsCountLabel"></div>
+      <!-- Deals -->
+      <section class="view hidden" data-view="deals">
+        <div class="view-head">
+          <h1>Deals</h1>
+          <div class="muted" id="deals-count">0 deal(s)</div>
         </div>
 
-        <div class="card">
-          <div class="table-wrap">
-            <table class="table" id="dealsTable">
-              <thead>
-                <tr>
-                  <th>Deal ID</th>
-                  <th>Customer</th>
-                  <th>Base</th>
-                  <th>Total Amount</th>
-                  <th>Tx Count</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+        <div class="toolbar">
+          <input id="deal-search" class="input" type="search" placeholder="Search deal_id, customer, exchanger…" autocomplete="off" />
+          <button class="pill pill-ghost" id="deal-search-clear" type="button">Clear</button>
+        </div>
+
+        <div class="table card">
+          <div class="thead">
+            <div>Deal ID</div>
+            <div>Customer</div>
+            <div>Exchanger</div>
+            <div>Tx</div>
+            <div>Last Date</div>
           </div>
-          <div class="hint">Tap a deal row to open its transactions.</div>
+          <div class="tbody" id="deals-table"></div>
         </div>
       </section>
 
-      <!-- TRANSACTIONS -->
-      <section class="view" data-view="transactions">
-        <div class="row-between">
-          <h2 class="h2">Transactions</h2>
-          <div class="muted" id="txContextLabel"></div>
+      <!-- Transactions -->
+      <section class="view hidden" data-view="transactions">
+        <div class="view-head">
+          <h1>Transactions</h1>
+          <div class="muted" id="tx-subtitle">All transactions</div>
         </div>
 
-        <div class="card">
-          <div class="row">
-            <input id="txSearch" class="input" type="search" placeholder="Search (deal, customer, currency, notes)..." />
-            <button id="txClearFilter" class="pill pill-outline" type="button">Clear</button>
-          </div>
+        <div class="toolbar">
+          <input id="tx-search" class="input" type="search" placeholder="Search deal, customer, currency, type…" autocomplete="off" />
+          <button class="pill pill-ghost" id="tx-search-clear" type="button">Clear</button>
+        </div>
 
-          <div class="table-wrap mt">
-            <table class="table" id="txTable">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Deal</th>
-                  <th>Type</th>
-                  <th>Base</th>
-                  <th>Amount</th>
-                  <th>Target</th>
-                  <th>Payable</th>
-                  <th>Customer</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+        <div class="table card">
+          <div class="thead">
+            <div>Date</div>
+            <div>Deal</div>
+            <div>Type</div>
+            <div>Customer</div>
+            <div>Base</div>
+            <div>Target</div>
+            <div>Payable</div>
           </div>
-
-          <div class="hint">Tip: Tap a deal in Deals view to filter here automatically.</div>
+          <div class="tbody" id="tx-table"></div>
         </div>
       </section>
 
-      <!-- REPORTS -->
-      <section class="view" data-view="reports">
-        <h2 class="h2">Reports</h2>
-        <div class="card">
+      <!-- Reports -->
+      <section class="view hidden" data-view="reports">
+        <div class="view-head">
+          <h1>Reports</h1>
+          <div class="muted">Simple placeholder (navigation + data are stable)</div>
+        </div>
+
+        <div class="card wide">
           <div class="card-label">Report Generator</div>
-          <div class="muted">Placeholder (will be wired after navigation + data are stable).</div>
-        </div>
-      </section>
+          <div class="muted">Will be wired after navigation + data are stable.</div>
 
-      <!-- NEW DEAL -->
-      <section class="view" data-view="new-deal">
-        <h2 class="h2">New Deal</h2>
-        <div class="card">
-          <div class="card-label">New deal form</div>
-          <div class="muted">Placeholder (will be wired after navigation + data are stable).</div>
-        </div>
-      </section>
+          <div class="spacer"></div>
 
-      <!-- DEBUG PANEL -->
-      <section class="view" data-view="debug">
-        <h2 class="h2">Debug</h2>
-        <div class="card">
-          <div class="card-label">Logs</div>
-          <pre id="debugLog" class="debug"></pre>
-          <div class="row mt">
-            <button id="reloadData" class="pill" type="button">Reload data.json</button>
-            <button id="clearLocal" class="pill pill-outline" type="button">Clear Local Cache</button>
+          <div class="row gap">
+            <select id="report-deal" class="input">
+              <option value="">Select deal…</option>
+            </select>
+            <button id="btn-make-report" class="pill pill-primary" type="button">Generate</button>
           </div>
+
+          <pre id="report-output" class="pre"></pre>
+        </div>
+      </section>
+
+      <!-- New Deal -->
+      <section class="view hidden" data-view="newdeal">
+        <div class="view-head">
+          <h1>New Deal</h1>
+          <div class="muted">Placeholder (navigation + data are stable)</div>
+        </div>
+
+        <div class="card wide">
+          <div class="card-label">New deal form</div>
+          <div class="muted">Will be wired after navigation + data are stable.</div>
         </div>
       </section>
     </main>
+
+    <footer class="app-footer">
+      <div class="muted" id="footer-status">Ready.</div>
+    </footer>
   </div>
+
+  <script src="app.js?v=1.0.0"></script>
 </body>
 </html>
