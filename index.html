@@ -1,65 +1,51 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>EXCHANGEMINI</title>
-
+  <title>ZaraPWA Dashboard</title>
+  <!-- اتصال به فایل استایل -->
   <link rel="stylesheet" href="styles.css" />
-  <script defer src="app.js"></script>
 </head>
+<body>
 
-<body class="app-shell">
+  <!-- نوار ناوبری -->
+  <nav>
+    <ul>
+      <li><a href="#" id="nav-dashboard" data-view="dashboard" class="active">Dashboard</a></li>
+      <li><a href="#" id="nav-deals" data-view="deals">Deals</a></li>
+      <li><a href="#" id="nav-transactions" data-view="transactions">Transactions</a></li>
+      <li><a href="#" id="nav-reports" data-view="reports">Reports</a></li>
+      <!-- می‌توان موارد ناوبری دیگری نیز اضافه کرد -->
+    </ul>
+  </nav>
 
-<header class="app-header">
-  <div class="app-title-block">
-    <div class="app-title">EXCHANGEMINI</div>
-    <div class="app-subtitle">Deal & Cash Flow Console</div>
-  </div>
-
-  <div class="app-header-right">
-    <button id="debug-button" class="pill pill-outline">Debug</button>
-    <span class="version-pill">v<span id="app-version"></span></span>
-  </div>
-</header>
-
-<nav class="app-nav">
-  <button class="pill pill-primary nav-link" data-view="dashboard">Dashboard</button>
-  <button class="pill nav-link" data-view="deals">Deals</button>
-  <button class="pill nav-link" data-view="transactions">Transactions</button>
-  <button class="pill nav-link" data-view="reports">Reports</button>
-  <button class="pill nav-link" data-view="new-deal">New Deal</button>
-</nav>
-
-<main class="app-main">
-
-  <!-- DASHBOARD -->
-  <section class="view" data-view="dashboard">
+  <!-- بخش‌های محتوایی (Viewها) -->
+  <section id="dashboard" class="view"> 
+    <!-- محتوای Dashboard -->
     <h2>Dashboard</h2>
-    <div class="card">Dashboard content</div>
+    <p>محتوای داشبورد در اینجا قرار می‌گیرد.</p>
   </section>
 
-  <!-- DEALS -->
-  <section class="view hidden" data-view="deals">
+  <section id="deals" class="view hidden">
+    <!-- محتوای Deals -->
     <h2>Deals</h2>
+    <p>محتوای بخش Deals در اینجا قرار می‌گیرد.</p>
   </section>
 
-  <!-- TRANSACTIONS -->
-  <section class="view hidden" data-view="transactions">
+  <section id="transactions" class="view hidden">
+    <!-- محتوای Transactions -->
     <h2>Transactions</h2>
+    <p>محتوای بخش Transactions در اینجا قرار می‌گیرد.</p>
   </section>
 
-  <!-- REPORTS -->
-  <section class="view hidden" data-view="reports">
+  <section id="reports" class="view hidden">
+    <!-- محتوای Reports -->
     <h2>Reports</h2>
+    <p>محتوای بخش Reports در اینجا قرار می‌گیرد.</p>
   </section>
 
-  <!-- NEW DEAL -->
-  <section class="view hidden" data-view="new-deal">
-    <h2>New Deal</h2>
-  </section>
-
-</main>
-
+  <!-- اتصال به فایل اسکریپت -->
+  <script src="app.js"></script>
 </body>
 </html>
