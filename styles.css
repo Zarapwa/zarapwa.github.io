@@ -1,36 +1,72 @@
-/* سبک‌دهی کلی برای بخش‌های نمایش */
-.view {
-  padding: 1em;
-  /* سایر استایل‌های دلخواه برای بخش‌ها */
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* مخفی کردن بخش‌هایی که غیر فعال هستند */
-.hidden, 
-.view-hidden {
-  display: none !important;
-}
-
-/* استایل برای لینک فعال در ناوبری */
-nav a.active {
-  font-weight: bold;
-  color: #007BFF;  /* به عنوان نمونه، رنگ متن آبی برای لینک فعال */
-}
-
-/* استایل‌های دلخواه برای نوار ناوبری */
-nav ul {
-  list-style: none;
-  padding: 0;
+body {
   margin: 0;
+  background: #0b1020;
+  color: #ffffff;
+}
+
+/* HEADER */
+.app-header {
+  padding: 20px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.app-header p {
+  margin: 4px 0 8px;
+  opacity: 0.8;
+}
+
+.version {
+  opacity: 0.6;
+}
+
+/* NAV */
+.app-nav {
+  padding: 16px;
   display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
-nav li {
-  margin-right: 1em;
+
+.pill {
+  padding: 14px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
 }
-nav a {
-  text-decoration: none;
-  color: black;
-  /* سایر استایل‌های لینک‌های ناوبری */
+
+.pill.active {
+  background: #f5c76b;
+  color: #000;
 }
-nav a:hover {
-  text-decoration: underline;
+
+/* MAIN */
+.app-main {
+  padding: 20px;
+}
+
+/* VIEWS — FINAL LOGIC */
+.view {
+  display: none;
+}
+
+.view.active {
+  display: block;
+}
+
+/* SAFARI SAFETY */
+body::before,
+body::after {
+  pointer-events: none;
 }
