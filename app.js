@@ -442,3 +442,6 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+document.addEventListener("DOMContentLoaded", () => {
+  setupNav();
+});
