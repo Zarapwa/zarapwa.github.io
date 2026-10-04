@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>APPEX Voice</title>
+<style>
+  :root{ --bg:#0b1220; --panel:#131d31; --line:#26334a; --muted:#8aa0bd; --fg:#eaf1fb; --gold:#e7b24b; --green:#34d399; --amber:#fbbf24; --red:#f87171; }
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{background:radial-gradient(1200px 600px at 50% -10%,#16233c,#0b1220);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Vazirmatn,Tahoma,sans-serif;display:flex;flex-direction:column;align-items:center;gap:16px;padding:22px 18px 30px;min-height:100%}
+  .top{display:flex;flex-direction:column;align-items:center;gap:14px;width:min(460px,94vw)}
+  .banner{width:100%;border-radius:12px;padding:10px 12px;font-size:12.5px;line-height:1.7;display:none}
+  .banner.show{display:block}
+  .banner.bad{background:#3a1420;border:1px solid #7f1d2e;color:#fecaca}
+  .orb{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;border:none;background:radial-gradient(circle at 35% 30%,#2a3a5c,#121b2e);box-shadow:0 10px 40px #0007, inset 0 0 20px #0006}
+  .orb svg{width:48px;height:48px;color:var(--gold)}
+  .orb.rec{animation:pulse 1.2s infinite}
+  .ring{position:absolute;inset:-10px;border-radius:50%;border:2px solid #e7b24b55;opacity:0}
+  .orb.rec .ring{animation:ring 1.2s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 10px 40px #0007, inset 0 0 20px #0006, 0 0 0 0 #e7b24b55}50%{box-shadow:0 10px 40px #0007, inset 0 0 20px #0006, 0 0 0 16px #e7b24b00}}
+  @keyframes ring{0%{opacity:.6;transform:scale(1)}100%{opacity:0;transform:scale(1.35)}}
+  h1{font-size:15px;font-weight:700;margin:0;color:var(--muted)}
+  #status{font-size:14px;color:var(--muted);min-height:20px;text-align:center}
+  #err{color:var(--red);font-size:13px;text-align:center;min-height:16px}
+  textarea#txt{width:100%;min-height:86px;border-radius:14px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:12px 14px;font-size:15px;line-height:1.7;resize:vertical;font-family:inherit}
+  .row{display:flex;gap:10px;width:100%}
+  button.act{flex:1;border-radius:12px;border:1px solid var(--line);padding:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  .use{background:var(--gold);color:#201a0a;border-color:#0000}
+  .use:disabled{opacity:.45;cursor:not-allowed}
+  .cancel{background:transparent;color:var(--muted)}
+  .diagToggle{margin-top:6px;background:none;border:0;color:var(--muted);font-size:12.5px;cursor:pointer;text-decoration:underline;font-family:inherit}
+  #diag{width:min(560px,94vw);border:1px solid var(--line);border-radius:14px;background:#0e1626;padding:12px 14px;display:none}
+  #diag.show{display:block}
+  .dhdr{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .dhdr b{font-size:13px}
+  .dbtns{display:flex;gap:6px;flex-wrap:wrap}
+  .dbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:9px;padding:7px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+  .chk{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;border-bottom:1px dashed #20304a}
+  .chk .dot{width:9px;height:9px;border-radius:50%;background:#55637a;flex:0 0 auto}
+  .chk.ok .dot{background:var(--green)} .chk.warn .dot{background:var(--amber)} .chk.fail .dot{background:var(--red)}
+  .chk .lbl{flex:1;min-width:0} .chk .val{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48%}
+  #diagLog{width:100%;height:150px;margin-top:8px;border-radius:10px;border:1px solid var(--line);background:#070d18;color:#bcd;font:11px/1.6 ui-monospace,Menlo,Consolas,monospace;padding:8px;resize:vertical;direction:ltr;text-align:left}
+</style>
+</head>
+<body>
+  <div class="top">
+    <h1 id="ttl">دستیار صوتی</h1>
+    <div class="banner bad" id="banner"></div>
+    <button class="orb" id="mic" type="button" aria-label="mic">
+      <span class="ring"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+    </button>
+    <div id="status">برای شروع، روی میکروفون بزنید</div>
+    <textarea id="txt" placeholder="متنِ گفتار شما اینجا می‌آید و قابل ویرایش است…" dir="rtl"></textarea>
+    <div id="err"></div>
+    <div class="row">
+      <button class="act use" id="use" type="button" disabled>استفاده از متن</button>
+      <button class="act cancel" id="cancel" type="button">لغو</button>
+    </div>
+    <button class="diagToggle" id="diagToggle" type="button">نمایش تشخیص فنی ▾</button>
+  </div>
+
+  <div id="diag">
+    <div class="dhdr"><b id="diagTtl">تشخیص فنی Voice</b>
+      <div class="dbtns">
+        <button class="dbtn" id="diagRun" type="button">اجرای بررسی‌ها</button>
+        <button class="dbtn" id="diagServer" type="button">بررسی سرور STT</button>
+        <button class="dbtn" id="diagCopy" type="button">کپی لاگ</button>
+      </div>
+    </div>
+    <div id="diagList"></div>
+    <textarea id="diagLog" readonly></textarea>
+  </div>
+
+<script>
+/* ===== APPEX Voice — INDEPENDENT, TOP-LEVEL capture page =====================================
+   This page MUST be hosted on its OWN static https origin (e.g. GitHub Pages) — NOT served by
+   Apps Script. Apps Script always re-wraps its HTML in a sandboxed cross-origin iframe, so
+   window.top !== window.self and Chrome's Web Speech refuses the microphone (error "not-allowed").
+   Hosted statically this page is genuinely top-level, so Web Speech fa-IR works.
+
+   SECURITY: this page holds NO API keys and NO session token. It talks to the main Agent only by
+   postMessage, validated by WINDOW HANDLE (window.opener). Chrome path: it transcribes locally and
+   returns TEXT. iPhone path: it records audio and hands the AUDIO to the opener, which performs the
+   server-side STT (keys stay server-side) and returns the text. This page never calls any backend. */
+(function(){
+  "use strict";
+  var LANG='fa', HOST=null;
+  var rec=null, recording=false, mediaRec=null, chunks=[], stream=null, base='';
+  var $=function(id){return document.getElementById(id);};
+  var L=function(fa,en){return LANG==='fa'?fa:en;};
+  function setStatus(t){ $('status').textContent=t; }
+  function setErr(t){ $('err').textContent=t||''; if(t) dlog('ERROR: '+t,'fail'); }
+
+  /* ---- diagnostics ---- */
+  var LOG=[];
+  function ts(){ var d=new Date(); return d.toTimeString().slice(0,8)+'.'+String(d.getMilliseconds()).padStart(3,'0'); }
+  function dlog(m,l){ LOG.push(ts()+'  ['+(l||'info').toUpperCase()+']  '+m); var e=$('diagLog'); if(e){ e.value=LOG.join('\n'); e.scrollTop=e.scrollHeight; } }
+  function setCheck(id,state,label,val){ var list=$('diagList'); if(!list) return; var row=document.getElementById('chk-'+id);
+    if(!row){ row=document.createElement('div'); row.id='chk-'+id; row.className='chk'; row.innerHTML='<span class="dot"></span><span class="lbl"></span><span class="val"></span>'; list.appendChild(row); }
+    row.className='chk '+(state||''); row.querySelector('.lbl').textContent=label; row.querySelector('.val').textContent=(val==null?'':String(val)); }
+  function topLevel(){ try{ return window.top===window.self; }catch(e){ return false; } }
+  function runChecks(){
+    var tl=topLevel();
+    setCheck('toplevel', tl?'ok':'fail', L('پنجرهٔ واقعیِ top-level','True top-level window'), tl?'yes':'NO (iframed)');
+    setCheck('origin','', 'Origin', location.origin);
+    var secure=(typeof isSecureContext!=='undefined')?isSecureContext:(location.protocol==='https:');
+    setCheck('secure', secure?'ok':'fail', L('زمینهٔ امن (HTTPS)','Secure context (HTTPS)'), secure?'yes':'no');
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    setCheck('speech', SR?'ok':'warn', 'Web Speech API', SR?'available':L('نیست','absent'));
+    var gum=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+    setCheck('gum', gum?'ok':'fail', 'getUserMedia', gum?'yes':'no');
+    setCheck('mrec', (typeof MediaRecorder!=='undefined')?'ok':'warn', 'MediaRecorder', (typeof MediaRecorder!=='undefined')?'yes':'no');
+    setCheck('lang','ok', L('زبان تشخیص','Recognition language'), LANG==='fa'?'fa-IR':'en-US');
+    setCheck('opener', (window.opener&&!window.opener.closed)?'ok':'warn', L('اتصال به برنامه','Opener link'), (window.opener&&!window.opener.closed)?'connected':'none');
+    try{ if(navigator.permissions&&navigator.permissions.query){ navigator.permissions.query({name:'microphone'}).then(function(st){ var f=st.state==='granted'?'ok':(st.state==='denied'?'fail':'warn'); setCheck('perm',f,L('مجوز میکروفون','Mic permission'),st.state); st.onchange=function(){ setCheck('perm', st.state==='granted'?'ok':(st.state==='denied'?'fail':'warn'), L('مجوز میکروفون','Mic permission'), st.state); }; }).catch(function(){ setCheck('perm','warn',L('مجوز میکروفون','Mic permission'),'unknown'); }); } else setCheck('perm','warn',L('مجوز میکروفون','Mic permission'),'n/a'); }catch(e){}
+    setCheck('result','', L('نتیجهٔ تشخیص گفتار','Speech result'), L('هنوز نه','not yet'));
+    setCheck('deliver','', L('ارسال متن به برنامه','Transcript delivered'), L('هنوز نه','not yet'));
+    // Honest banner if this page is NOT top-level (i.e. someone served it from Apps Script)
+    var b=$('banner');
+    if(!tl){ b.className='banner bad show'; b.textContent=L('هشدار: این صفحه داخل یک iframe اجرا می‌شود (مثلاً از Apps Script سرو شده). در این حالت Web Speech کروم کار نمی‌کند. این فایل را باید روی یک دامنهٔ مستقل (مثل GitHub Pages) میزبانی کنید.','Warning: this page is running inside an iframe (e.g. served by Apps Script). Chrome Web Speech will NOT work here. Host this file on its own static origin (e.g. GitHub Pages).'); }
+    else { b.className='banner'; }
+    dlog('checks: topLevel='+tl+' origin='+location.origin+' SpeechAPI='+(!!SR)+' getUserMedia='+gum+' secure='+secure);
+  }
+
+  function localize(){
+    document.documentElement.lang=LANG; document.documentElement.dir=(LANG==='fa'?'rtl':'ltr');
+    $('ttl').textContent=L('دستیار صوتی','Voice assistant');
+    if(!recording && !$('txt').value) setStatus(L('برای شروع، روی میکروفون بزنید','Tap the microphone to start'));
+    $('txt').setAttribute('placeholder', L('متنِ گفتار شما اینجا می‌آید و قابل ویرایش است…','Your speech appears here and is editable…'));
+    $('use').textContent=L('استفاده از متن','Use this text'); $('cancel').textContent=L('لغو','Cancel');
+    $('diagTtl').textContent=L('تشخیص فنی Voice','Voice diagnostics');
+    $('diagRun').textContent=L('اجرای بررسی‌ها','Run checks'); $('diagServer').textContent=L('بررسی سرور STT','Check server STT'); $('diagCopy').textContent=L('کپی لاگ','Copy log');
+    $('diagToggle').textContent=($('diag').classList.contains('show')? L('پنهان کردن تشخیص فنی ▴','Hide diagnostics ▴'): L('نمایش تشخیص فنی ▾','Show diagnostics ▾'));
+    runChecks();
+  }
+  function refreshUse(){ $('use').disabled=!$('txt').value.trim(); }
+
+  /* ---- opener relay (identity by window handle) ---- */
+  window.addEventListener('message', function(ev){
+    if(ev.source!==window.opener) return;                   // ONLY our opener
+    var d=ev.data||{}; if(d.source!=='appexVoiceHost') return;
+    if(d.type==='init'){ HOST=ev.source; if(d.language==='fa'||d.language==='en') LANG=d.language; dlog('init: lang='+LANG); localize(); return; }
+    if(d.type==='sttResult'){                                 // iPhone: server transcription came back via opener
+      if(d.ok && d.text){ commitFinal(d.text); setStatus(L('آماده است. ویرایش و تأیید کنید.','Ready. Edit and confirm.')); setErr(''); dlog('server STT ok: '+String(d.text).slice(0,40)); }
+      else { var code=d.code||''; setCheck('result','fail',L('نتیجهٔ تشخیص گفتار','Speech result'),code||'failed');
+        setErr(code==='STT_NOT_CONFIGURED'? L('تبدیل گفتار روی سرور پیکربندی نشده است (برای iPhone مقادیر AGENT_STT_* را تنظیم کنید).','Server STT not configured (set AGENT_STT_* for iPhone).'): L('تبدیل گفتار ناموفق بود.','Transcription failed.')); setStatus(''); }
+      return;
+    }
+    if(d.type==='serverDiag'){ var x=d; var ok=x.providerConfigured; setCheck('server', ok?'ok':'warn', L('پیکربندی سرور STT','Server STT config'), ok?('endpoint+key set · '+(x.model||'')+' '+(x.format||'')):L('تنظیم نشده (iPhone)','not set (iPhone)')); setCheck('pageurl', x.pageUrlSet?'ok':'warn', L('آدرس صفحهٔ Voice در سرور','Voice page URL on server'), x.pageUrlSet?'set':'unset'); dlog('serverDiag configured='+!!ok+' pageUrlSet='+!!x.pageUrlSet); return; }
+  });
+  function postHost(msg){ try{ if(window.opener && !window.opener.closed){ msg.source='appexVoice'; window.opener.postMessage(msg,'*'); } }catch(e){} }
+  HOST=window.opener||null; postHost({type:'ready'}); dlog('voice page ready ('+location.origin+'); announced to opener');
+
+  function appendTranscript(f,interim){ $('txt').value=base+(f||'')+(interim?(' '+interim):''); refreshUse(); }
+  function commitFinal(t){ base=(base+' '+t).replace(/\s+/g,' ').trim()+' '; $('txt').value=base.trim(); refreshUse(); setCheck('result','ok',L('نتیجهٔ تشخیص گفتار','Speech result'), String(t).slice(0,24)); }
+
+  /* ---- Chrome: Web Speech (true top-level required) ---- */
+  function startSR(){
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return false;
+    try{
+      rec=new SR(); rec.lang=(LANG==='fa'?'fa-IR':'en-US'); rec.interimResults=true; rec.continuous=false; rec.maxAlternatives=1;
+      base=($('txt').value? $('txt').value+' ':''); dlog('SpeechRecognition.start lang='+rec.lang+' topLevel='+topLevel());
+      rec.onstart=function(){ recording=true; $('mic').classList.add('rec'); setStatus(L('در حال شنیدن…','Listening…')); setErr(''); setCheck('recog','ok',L('شروع تشخیص','Recognition start'),'started'); dlog('recognition started'); };
+      rec.onerror=function(e){ recording=false; $('mic').classList.remove('rec'); var c=e&&e.error; setCheck('recog','fail',L('شروع تشخیص','Recognition start'),c||'error'); dlog('recognition error: '+c,'fail');
+        if(c==='not-allowed'||c==='service-not-allowed') setErr(L('سرویس تشخیص گفتار رد شد. اگر این صفحه داخل iframe است (مثلاً از Apps Script)، باید روی دامنهٔ مستقل میزبانی شود.','Recognition was refused. If this page is inside an iframe (e.g. served by Apps Script), host it on its own static origin.'));
+        else if(c==='no-speech') setErr(L('صدایی شنیده نشد.','No speech detected.'));
+        else if(c==='network') setErr(L('خطای شبکه در سرویس تشخیص گفتار.','Network error in recognition service.'));
+        else setErr(L('خطا در تشخیص گفتار.','Speech recognition error.'));
+        setStatus(L('برای تلاش دوباره، روی میکروفون بزنید','Tap the microphone to try again')); };
+      rec.onend=function(){ recording=false; $('mic').classList.remove('rec'); dlog('recognition ended'); if(!$('err').textContent) setStatus(L('تمام شد. متن را ویرایش و تأیید کنید.','Done. Edit and confirm.')); };
+      rec.onresult=function(e){ var interim='',fin=''; for(var i=e.resultIndex;i<e.results.length;i++){ var tr=e.results[i][0]&&e.results[i][0].transcript||''; if(e.results[i].isFinal) fin+=tr; else interim+=tr; } if(interim) dlog('interim: '+interim); if(fin){ dlog('FINAL: '+fin); commitFinal(fin); } else appendTranscript('',interim); };
+      rec.start(); return true;
+    }catch(e){ dlog('SpeechRecognition threw: '+(e&&e.message),'fail'); return false; }
+  }
+
+  /* ---- iPhone/Safari: record → hand AUDIO to opener (server does STT, keys stay server-side) ---- */
+  function b64(blob){ return new Promise(function(res,rej){ var fr=new FileReader(); fr.onload=function(){ var s=String(fr.result||''); res(s.slice(s.indexOf(',')+1)); }; fr.onerror=rej; fr.readAsDataURL(blob); }); }
+  function startRecorder(){
+    if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){ setErr(L('این مرورگر از ضبط صدا پشتیبانی نمی‌کند.','This browser cannot capture audio.')); return; }
+    dlog('getUserMedia({audio:true})…');
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(st){
+      stream=st; chunks=[]; setCheck('recog','ok',L('گرفتن میکروفون','Microphone capture'),'granted'); dlog('getUserMedia granted');
+      var mime=(window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported('audio/webm'))?'audio/webm':'';
+      try{ mediaRec=mime? new MediaRecorder(st,{mimeType:mime}) : new MediaRecorder(st); }catch(e){ mediaRec=new MediaRecorder(st); }
+      mediaRec.ondataavailable=function(ev){ if(ev.data&&ev.data.size) chunks.push(ev.data); };
+      mediaRec.onstop=function(){ stopStream(); dlog('recorder stopped; chunks='+chunks.length); handOffAudio(mediaRec.mimeType||'audio/webm'); };
+      mediaRec.start(); recording=true; $('mic').classList.add('rec'); setStatus(L('در حال ضبط… دوباره بزنید تا متوقف شود','Recording… tap again to stop')); setErr(''); dlog('recorder started mime='+(mediaRec.mimeType||'?'));
+    }).catch(function(e){ var n=e&&e.name; setCheck('recog','fail',L('گرفتن میکروفون','Microphone capture'),n||'error'); dlog('getUserMedia error: '+n,'fail');
+      if(n==='NotAllowedError'||n==='SecurityError') setErr(L('اجازهٔ میکروفون داده نشد (یا صفحه داخل iframe است).','Microphone denied (or the page is inside an iframe).'));
+      else if(n==='NotFoundError') setErr(L('میکروفونی یافت نشد.','No microphone found.'));
+      else setErr(L('دسترسی به میکروفون ممکن نشد.','Could not access the microphone.')); });
+  }
+  function stopStream(){ try{ if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; } }catch(e){} }
+  function handOffAudio(mime){
+    recording=false; $('mic').classList.remove('rec');
+    if(!chunks.length){ setErr(L('صدایی ضبط نشد.','No audio recorded.')); return; }
+    setStatus(L('در حال تبدیل گفتار به متن…','Transcribing…'));
+    var blob=new Blob(chunks,{type:mime}); dlog('blob size='+blob.size);
+    b64(blob).then(function(data){ dlog('base64 length='+data.length+' → handing audio to opener for server STT');
+      postHost({ type:'audio', audioBase64:data, mime:mime, language:LANG });   // opener does the privileged server call
+    }).catch(function(){ setErr(L('خطا در پردازش صدا.','Audio processing error.')); setStatus(''); });
+  }
+
+  var useSR=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  $('mic').onclick=function(){ if(recording){ try{ if(rec) rec.stop(); if(mediaRec&&mediaRec.state!=='inactive') mediaRec.stop(); }catch(e){} return; } setErr(''); if(useSR){ if(!startSR()){ useSR=false; dlog('fallback to recorder path'); startRecorder(); } } else startRecorder(); };
+  $('txt').addEventListener('input', refreshUse);
+  $('use').onclick=function(){ var t=$('txt').value.trim(); if(!t) return; postHost({type:'transcript', text:t}); setCheck('deliver','ok',L('ارسال متن به برنامه','Transcript delivered'),'sent'); dlog('transcript delivered to opener ('+t.length+' chars)'); try{ window.close(); }catch(e){} };
+  $('cancel').onclick=function(){ postHost({type:'cancel'}); dlog('cancelled'); stopStream(); try{ window.close(); }catch(e){} };
+  $('diagToggle').onclick=function(){ $('diag').classList.toggle('show'); localize(); };
+  $('diagRun').onclick=function(){ runChecks(); dlog('manual re-check'); };
+  $('diagServer').onclick=function(){ postHost({type:'checkServer'}); dlog('requested server STT diag from opener'); };
+  $('diagCopy').onclick=function(){ var el=$('diagLog'); el.select(); try{ document.execCommand('copy'); }catch(e){} try{ if(navigator.clipboard) navigator.clipboard.writeText(el.value); }catch(e){} dlog('log copied'); };
+  window.addEventListener('beforeunload', stopStream);
+
+  localize();
+})();
+</script>
+</body>
+</html>
